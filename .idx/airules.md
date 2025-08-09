@@ -184,3 +184,60 @@ This example sets up a Go environment for building a command-line interface.
 - Explain the benefits of using `dev.nix` for reproducibility and dependency management.
 - If a request is ambiguous, ask for clarification on the desired tools, libraries, and versions to be included in the environment.
 - When suggesting changes to `dev.nix`, explain the impact of the changes on the development environment and remind the user to reload the environment.
+
+## 6. Project Master Plan: Camper Management System
+
+This section outlines the high-level plan for developing a full-stack, Firebase-hosted Camper Management System. This system will manage campers and sessions for parents, staff, and administrators.
+
+**Key aspects:**
+
+- **Single Codebase:** Frontend and backend will be in one repository.
+- **Firebase-Centric:** Leveraging Firebase for hosting, authentication, database (Firestore/Realtime DB), Cloud Functions, Storage, and Security Rules.
+- **Frontend:** Responsive React application.
+- **RBAC:** Role-Based Access Control for parent, staff, and admin roles using Firebase Authentication and Custom Claims.
+
+**Core Features:**
+
+- Authentication & User Management (Firebase Auth, Custom Claims, Secure Login, Password Reset)
+- Parent Portal (Camper Registration, Editing, Session Management, Messaging)
+- Staff Portal (Camper Lists, Search/Filter, Updates, Cabin Assignment)
+- Admin Panel (User Management, Session Management, Reporting)
+
+**Specialized Features:**
+
+- Messaging (Parent-to-camper, broadcasts)
+- Medical & Nurse Panel (Charting, History, Forms)
+- Employment Section (Applications, Tracking, File Uploads)
+
+**Technology Stack:**
+
+- **Hosting:** Firebase Hosting
+- **Frontend:** React
+- **Auth:** Firebase Authentication
+- **Backend:** Firebase Cloud Functions
+- **Database:** Firestore or Realtime DB
+- **Storage:** Firebase Storage
+- **Rules:** Firestore Security Rules
+- **Admin SDK:** Firebase Admin SDK
+
+**Database Structure (Example - Firestore):**
+
+- `/users/{userId}`
+- `/campers/{camperId}`
+- `/sessions/{sessionId}`
+- `/messages/{messageId}`
+- `/employment/{applicationId}`
+
+**Build Plan:**
+
+1.  Set up Firebase project and enable services.
+2.  Configure Authentication & RBAC.
+3.  Create Firestore collections & security rules.
+4.  Build frontend portals.
+5.  Implement Cloud Functions.
+6.  Test & QA.
+7.  Deploy.
+
+**Future Enhancements:** (Stripe/PayPal, Offline mode, Mobile app, Advanced analytics, AI features)
+
+This plan will guide our step-by-step development process.
