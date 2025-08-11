@@ -21,6 +21,51 @@
   //    },
   //   ]
   // ]
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "senderId", "order": "asc" },
+        { "fieldPath": "timestamp", "order": "asc" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recipientId", "order": "asc" },
+        { "fieldPath": "timestamp", "order": "asc" }
+      ]
+    },
+    {
+      "collectionGroup": "campers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "parentId", "order": "asc" }
+      ]
+    },
+     {
+      "collectionGroup": "medicalHistoryEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "asc" }
+      ]
+    },
+     {
+      "collectionGroup": "medicalObservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "asc" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "asc" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

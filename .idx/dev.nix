@@ -7,7 +7,7 @@
   packages = [
     # pkgs.go
     pkgs.nodejs_20
-    pkgs.firebase-cli
+    pkgs.firebase-tools
   ];
   # Sets environment variables in the workspace
   env = {};
@@ -17,21 +17,14 @@
       # "vscodevim.vim"
       "dbaeumer.vscode-eslint"
       "esbenp.prettier-vscode"
-      "firebase.firebase-vscode"
     ];
     previews = {
       enable = true;
       previews = {
-        # web = {
-        #   # Example: run "npm run dev" with PORT set to IDX's defined port for previews,
-        #   # and show it in IDX's web preview panel
-        #   command = ["npm" "run" "dev"];
         web = {
-        #   env = {
-        #     # Environment variables to set for your server
-        #     PORT = "$PORT";
-        #   };
-        # };
+          command = ["sh" "-c" "cd frontend/ && npm start"];
+          manager = "web";
+        };
       };
     };
     # Workspace lifecycle hooks
@@ -44,10 +37,7 @@
         default.openFiles = [ ".idx/dev.nix" "README.md" ];
       };
       # Runs when the workspace is (re)started
-      onStart = {
-        # Example: start a background task to watch and re-build backend code
-        run-dev-server = "npm start";
-      };
+      onStart = {};
     };
   };
 }
