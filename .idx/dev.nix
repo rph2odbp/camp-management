@@ -8,6 +8,8 @@
     # pkgs.go
     pkgs.nodejs_20
     pkgs.firebase-tools
+    # Add the Google Cloud SDK to make the `gcloud` command available
+    pkgs.google-cloud-sdk
   ];
   # Sets environment variables in the workspace
   env = {};
