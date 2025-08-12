@@ -1,61 +1,86 @@
-import { onCall } from 'firebase-functions/v2/https';
-import * as functions from 'firebase-functions'; // Add this line back
-import * as admin from 'firebase-admin';
 
-admin.initializeApp();
+import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
 
-// Define a type for the user data for better type safety
-interface UserData {
-  email: string;
-  password?: string; // Password is only for creation, optional for other uses
-  role: 'parent' | 'staff' | 'admin';
-}
+// Initialize Firebase Admin SDK
+initializeApp();
 
-export const createUser = onCall((request) => {
-    // 1. Verify the user calling the function is an admin.
-    if (request.auth?.token.role !== 'admin') {
-        throw new functions.https.HttpsError(
-            'permission-denied', 
-            'Only admins can create new users.'
+/**
+ * Creates a new user with a specified role and adds their data to Firestore.
+ * This function can only be called by an authenticated user with the 'admin' custom claim.
+ */
+export const createUser = onCall(async (request) => {
+    // 1. Authentication and Authorization Check
+    //    Ensure the user calling the function is authenticated and is an admin.
+    if (!request.auth || !request.auth.token.admin) {
+        logger.error("Caller is not an admin.", { uid: request.auth?.uid });
+        throw new HttpsError(
+            "permission-denied",
+            "You must be an admin to create new users."
         );
     }
 
-    const { email, password, role } = request.data as UserData;
-
-    // The password is required for user creation.
-    if (!password) {
-        throw new functions.https.HttpsError(
-            'invalid-argument',
-            'Password is required.'
+    // 2. Input Validation
+    //    Ensure the necessary data was passed in the request.
+    const { email, password, role, firstName, lastName } = request.data;
+    if (!email || !password || !role || !firstName || !lastName) {
+        throw new HttpsError(
+            "invalid-argument",
+            "The function must be called with all required fields: email, password, role, firstName, lastName."
         );
     }
 
-    if (!['parent', 'staff', 'admin'].includes(role)) {
-        throw new functions.https.HttpsError(
-            'invalid-argument',
-            'Invalid role specified.'
-        );
-    }
+    try {
+        logger.info(`Attempting to create user: ${email} with role ${role}`);
 
-    return admin.auth().createUser({
-        email: email,
-        password: password,
-    })
-    .then(userRecord => {
-        return admin.auth().setCustomUserClaims(userRecord.uid, { role: role })
-            .then(() => {
-                const userForFirestore: Omit<UserData, 'password'> = {
-                    email: email,
-                    role: role
-                };
-                return admin.firestore().collection('users').doc(userRecord.uid).set(userForFirestore);
-            });
-    })
-    .then(() => {
-        return { result: `Successfully created user ${email} with role ${role}.` };
-    })
-    .catch((error: any) => {
-        console.error('Error creating new user:', error);
-        throw new functions.https.HttpsError('internal', 'An unexpected error occurred.');
-    });
+        // 3. Create User in Firebase Authentication
+        const userRecord = await getAuth().createUser({
+            email: email,
+            password: password,
+            displayName: `${firstName} ${lastName}`,
+        });
+
+        const userId = userRecord.uid;
+        logger.info(`Successfully created user in Auth with UID: ${userId}`);
+
+        // 4. Set Custom Claims for Role-Based Access Control (RBAC)
+        await getAuth().setCustomUserClaims(userId, { role: role });
+        logger.info(`Set custom claim 'role: ${role}' for user: ${userId}`);
+
+        // 5. Create User Document in Firestore
+        //    This stores additional user information.
+        const userDoc = {
+            uid: userId,
+            email: email,
+            role: role,
+            firstName: firstName,
+            lastName: lastName,
+            createdAt: new Date().toISOString(),
+        };
+        await getFirestore().collection("users").doc(userId).set(userDoc);
+        logger.info(`Successfully created user document in Firestore for user: ${userId}`);
+
+        // 6. Return Success Response
+        return {
+            status: "success",
+            message: `User ${email} created successfully with role ${role}.`,
+            uid: userId,
+        };
+    } catch (error: any) {
+        logger.error("Error creating new user:", error);
+
+        // Map Firebase Auth errors to client-friendly messages.
+        if (error.code === "auth/email-already-exists") {
+            throw new HttpsError("already-exists", "The email address is already in use by another account.");
+        }
+        if (error.code === "auth/invalid-password") {
+            throw new HttpsError("invalid-argument", "The password must be a string with at least 6 characters.");
+        }
+
+        // Generic error for other failures.
+        throw new HttpsError("internal", "An unexpected error occurred while creating the user.");
+    }
 });

@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase-config';
 import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import EditCamperForm from './EditCamperForm';
 
-function CamperList({ onSelectCamper }) {
+function CamperList({ view = 'parent', staffId = null, onSelectCamper }) {
     const [campers, setCampers] = useState([]);
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -13,14 +14,22 @@ function CamperList({ onSelectCamper }) {
 
     useEffect(() => {
         const user = auth.currentUser;
-        if (!user) {
+        if (!user && view === 'parent') {
             setCampers([]);
             setLoading(false);
             return;
         }
 
-        // Fetch Campers
-        const campersQuery = query(collection(db, 'campers'), where('parentId', '==', user.uid));
+        let campersQuery;
+        if (view === 'staff' && staffId) {
+            // Staff view: Fetch campers assigned to this staff member
+            // This assumes a camper document has a field `assignedStaff` which is an array of staff IDs.
+            campersQuery = query(collection(db, 'campers'), where('assignedStaff', 'array-contains', staffId));
+        } else {
+            // Parent view: Fetch campers belonging to the logged-in parent
+            campersQuery = query(collection(db, 'campers'), where('parentId', '==', user.uid));
+        }
+        
         const unsubscribeCampers = onSnapshot(campersQuery, (querySnapshot) => {
             const campersData = [];
             const initialSelectedSessions = {};
@@ -55,7 +64,7 @@ function CamperList({ onSelectCamper }) {
             unsubscribeCampers();
             unsubscribeSessions();
         };
-    }, []);
+    }, [view, staffId]);
 
     const handleSessionSelect = (camperId, sessionId, isSelected) => {
         setSelectedSessions(prev => {
@@ -91,7 +100,7 @@ function CamperList({ onSelectCamper }) {
         }
     };
 
-    if (loading) return <p>Loading your campers...</p>;
+    if (loading) return <p>Loading campers...</p>;
     if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
     if (editingCamperId) {
@@ -99,12 +108,14 @@ function CamperList({ onSelectCamper }) {
     }
 
     if (campers.length === 0) {
-        return <p>You have not added any campers yet.</p>;
+        return view === 'parent' 
+            ? <p>You have not added any campers yet.</p>
+            : <p>No campers are currently assigned to you.</p>;
     }
 
     return (
         <div>
-            <h2>My Campers</h2>
+            <h2>{view === 'parent' ? 'My Campers' : 'Assigned Campers'}</h2>
             <ul>
                 {campers.map((camper) => (
                     <li key={camper.id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
@@ -112,12 +123,14 @@ function CamperList({ onSelectCamper }) {
                             <h3>{camper.name} (DOB: {camper.dateOfBirth})</h3>
                             <div>
                                 <button onClick={() => onSelectCamper(camper.id)}>View Profile</button>
-                                <button onClick={() => setEditingCamperId(camper.id)}>Edit</button>
-                                <button onClick={() => handleDeleteClick(camper.id)}>Delete</button>
+                                {view === 'parent' && (
+                                    <>
+                                        <button onClick={() => setEditingCamperId(camper.id)}>Edit</button>
+                                        <button onClick={() => handleDeleteClick(camper.id)}>Delete</button>
+                                    </>
+                                )}
                             </div>
                         </div>
-
-                        {/* Enrolled Sessions Display */}
                         <div>
                             <h4>Enrolled Sessions:</h4>
                             {camper.enrolledSessionIds && camper.enrolledSessionIds.length > 0 ? (
@@ -130,23 +143,24 @@ function CamperList({ onSelectCamper }) {
                             ) : <p>Not enrolled in any sessions.</p>}
                         </div>
 
-                        {/* Session Selection */}
-                        <div>
-                            <h4>Register for Sessions:</h4>
-                            {sessions.length > 0 ? (
-                                sessions.map((session) => (
-                                    <label key={session.id} style={{ display: 'block' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedSessions[camper.id]?.includes(session.id) || false}
-                                            onChange={(e) => handleSessionSelect(camper.id, session.id, e.target.checked)}
-                                        />
-                                        {session.name} ({session.startDate} - {session.endDate})
-                                    </label>
-                                ))
-                            ) : <p>No sessions available to register.</p>}
-                            <button onClick={() => handleSaveSessions(camper.id)} style={{ marginTop: '0.5rem' }}>Save Session Registrations</button>
-                        </div>
+                        {view === 'parent' && (
+                            <div>
+                                <h4>Register for Sessions:</h4>
+                                {sessions.length > 0 ? (
+                                    sessions.map((session) => (
+                                        <label key={session.id} style={{ display: 'block' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedSessions[camper.id]?.includes(session.id) || false}
+                                                onChange={(e) => handleSessionSelect(camper.id, session.id, e.target.checked)}
+                                            />
+                                            {session.name} ({session.startDate} - {session.endDate})
+                                        </label>
+                                    ))
+                                ) : <p>No sessions available to register.</p>}
+                                <button onClick={() => handleSaveSessions(camper.id)} style={{ marginTop: '0.5rem' }}>Save Session Registrations</button>
+                            </div>
+                        )}
                     </li>
                 ))}
             </ul>
