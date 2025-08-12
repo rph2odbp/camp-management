@@ -47,7 +47,7 @@ function MessagePrinting() {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [campersData]);
 
     const handlePrint = useReactToPrint({
         content: () => componentRef.current,

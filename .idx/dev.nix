@@ -1,54 +1,70 @@
 { pkgs, ... }: {
-  # Specifies the Nixpkgs channel to use for package lookups.
-  channel = "stable-24.05";
-
-  # A list of system packages to install in the environment.
+  # The Nix packages to make available in your workspace
+  # Search for packages at https://search.nixos.org/packages
   packages = [
-    pkgs.nodejs_20
     pkgs.firebase-tools
+    pkgs.jdk17
+    pkgs.nodejs_20
     pkgs.google-cloud-sdk
-    pkgs.jdk # Java is required for the Firebase emulators.
   ];
 
-  # A set of environment variables to be available in the workspace.
-  env = {
-    # Sets the JAVA_HOME environment variable, which the Firebase emulators need to find Java.
-    JAVA_HOME = pkgs.jdk;
+  # The VS Code extensions to install in your workspace
+  # Search for extensions at https://open-vsx.org/
+  idx.extensions = [
+    "dbaeumer.vscode-eslint"
+    "esbenp.prettier-vscode"
+    "vscode.emmet"
+    "ms-azuretools.vscode-docker"
+    "github.copilot"
+    "ms-vscode.vscode-typescript-next"
+    "apollographql.vscode-apollo"
+    "figma.figma-for-vs-code"
+    "wallabyjs.wallaby-vscode"
+  ];
+  
+  # Workspace lifecycle hooks
+  idx.workspace = {
+    # Runs when a workspace is first created
+    onCreate = {
+      install-npm-packages = "npm install && npm install --prefix backend && npm install --prefix frontend";
+      #build-backend = "npm run build --prefix backend";
+    };
+    # Runs every time the workspace is (re)started
+    onStart = {
+      #start-backend = "npm run start --prefix backend";
+      #start-frontend = "npm start --prefix frontend";
+    };
   };
 
-  # Firebase Studio specific configurations.
-  idx = {
-    # A list of VS Code extensions to install from the Open VSX Registry.
-    extensions = [
-      "dbaeumer.vscode-eslint"
-    ];
-
-    # Workspace lifecycle hooks.
-    workspace = {
-      # Commands to run when the workspace is first created.
-      onCreate = {
-        npm-install = "npm install";
-        frontend-npm-install = "npm install --prefix frontend";
-        backend-npm-install = "npm install --prefix backend";
-      };
-
-      # Commands to run every time the workspace is (re)started.
-      onStart = {
-        # Start the Firebase emulators. The UI will be on port 4000.
-        emulators = "firebase emulators:start";
-      };
-    };
-
-    # Configures web previews for your application.
+  # Web-based previews
+  idx.previews = {
+    enable = true;
     previews = {
-      enable = true;
-      previews = {
-        # Defines the preview for your frontend application.
-        web = {
-          command = ["npm" "start" "--prefix" "frontend"];
-          manager = "web";
-        };
+      web = {
+        # The name that will show up in the Preview panel
+        id = "web";
+        # The command to run to start your app
+        command = ["npm" "start" "--prefix" "frontend"];
+        # "web" will open this in a new tab.
+        # "web-embedded" will open this in a panel inside the editor
+        manager = "web";
+      };
+      storybook = {
+        id = "storybook";
+        command = ["npm" "run" "storybook" "--prefix" "frontend"];
+        manager = "web";
+      };
+      "firebase-emulator-ui" = {
+        id = "firebase-emulator-ui";
+        command = ["firebase" "emulators:start"];
+        manager = "web";
       };
     };
+  };
+
+  # Environment variables
+  env = {
+    # Example:
+    # PREVIEW_URL = idx.previews.web.url;
   };
 }

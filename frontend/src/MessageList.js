@@ -75,7 +75,7 @@ function MessageList() {
 
         return () => unsubscribeMessages();
 
-    }, [currentUser, userRole]);
+    }, [currentUser, userRole, campersData]);
 
     if (loading) return <p>Loading messages...</p>;
     if (error) return <p style={{ color: 'red' }}>{error}</p>;

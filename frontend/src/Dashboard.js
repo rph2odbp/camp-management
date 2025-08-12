@@ -5,7 +5,6 @@ import { collection, onSnapshot } from 'firebase/firestore';
 function Dashboard() {
     const [campers, setCampers] = useState([]);
     const [sessions, setSessions] = useState([]);
-    const [cabins, setCabins] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -17,17 +16,12 @@ function Dashboard() {
         );
 
         const unsubSessions = onSnapshot(collection(db, 'sessions'),
-            (snapshot) => setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))),
-            (err) => setError('Failed to fetch sessions.')
-        );
-
-        const unsubCabins = onSnapshot(collection(db, 'cabins'),
             (snapshot) => {
-                setCabins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 setLoading(false);
             },
             (err) => {
-                setError('Failed to fetch cabins.');
+                setError('Failed to fetch sessions.');
                 setLoading(false);
             }
         );
@@ -35,7 +29,6 @@ function Dashboard() {
         return () => {
             unsubCampers();
             unsubSessions();
-            unsubCabins();
         };
     }, []);
 

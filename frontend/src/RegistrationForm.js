@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, storage, auth } from './firebase-config';
-import { collection, query, onSnapshot, addDoc, doc, getDoc, updateDoc, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, updateDoc, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { processDepositPayment } from './services/PaymentService';
 
 function DynamicFormField({ question, value, onChange }) {
     const { label, name, type, required, options } = question;

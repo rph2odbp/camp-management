@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase-config';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, writeBatch } from 'firebase/firestore';
+import { collection, serverTimestamp, getDocs, query, where, writeBatch, doc } from 'firebase/firestore';
 
 function BroadcastMessageForm() {
     const [sessions, setSessions] = useState([]);

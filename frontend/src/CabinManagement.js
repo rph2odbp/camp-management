@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 function CabinManagement() {
     const [cabins, setCabins] = useState([]);
     const [sessions, setSessions] = useState([]);
     const [allCampers, setAllCampers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
 
     const [selectedSessionId, setSelectedSessionId] = useState('');
     const [selectedCabinId, setSelectedCabinId] = useState('');
@@ -16,6 +14,9 @@ function CabinManagement() {
 
     useEffect(() => {
         // ... (existing cabin fetch)
+        const unsubCabins = onSnapshot(collection(db, 'cabins'), (snapshot) => {
+            setCabins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
         
         const unsubSessions = onSnapshot(collection(db, 'sessions'), (snapshot) => {
             setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -26,7 +27,7 @@ function CabinManagement() {
         });
 
         return () => {
-            // ... (existing unsubscribe)
+            unsubCabins();
             unsubSessions();
             unsubCampers();
         };
@@ -45,7 +46,7 @@ function CabinManagement() {
             {/* ... (existing add/edit forms) */}
             
             <h3>Cabin Roster</h3>
-            <select onChange={(e) => setSelectedSessionId(e.target.value)} value={selectedSessionI}>
+            <select onChange={(e) => setSelectedSessionId(e.target.value)} value={selectedSessionId}>
                 <option value="">Select Session</option>
                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>

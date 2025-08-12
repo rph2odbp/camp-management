@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { db, storage } from './firebase-config'; // Import Firestore and Storage instances
-import { collection, addDoc, Timestamp } from 'firebase/firestore'; // Import necessary Firestore functions and Timestamp
+import { collection, addDoc } from 'firebase/firestore'; // Import necessary Firestore functions
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Import necessary Storage functions
 import { v4 as uuidv4 } from 'uuid'; // Import uuid for unique file names
 import { auth } from './firebase-config'; // Import auth to get current user UID
@@ -262,7 +262,8 @@ function AddCamperForm() {
 
       </form>
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      {success && <p style={{ color: 'green' }}>{success}</p>}\n    </div>
+      {success && <p style={{ color: 'green' }}>{success}</p>}
+    </div>
   );
 }
 

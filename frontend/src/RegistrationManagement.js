@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, remoteConfig } from './firebase-config'; // Import remoteConfig
-import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { fetchAndActivate, getString } from 'firebase/remote-config';
 
 // Placeholder for a service that would handle sending emails
@@ -81,9 +81,8 @@ function RegistrationManagement({ onSelectCamper }) {
         if (window.confirm(`Are you sure you want to send an acceptance email to ${camper.name}?`)) {
             try {
                 await EmailService.sendAcceptanceEmail(camper);
-                const camperRef = doc(db, 'campers', camper.id);
                 // Optionally update status if needed, e.g., from waitlisted to accepted
-                // await updateDoc(camperRef, { registrationStatus: 'accepted' });
+                // await updateDoc(doc(db, 'campers', camper.id), { registrationStatus: 'accepted' });
                 await recordTimelineEvent(camper.id, {
                     type: 'email',
                     title: 'Acceptance Email Sent'
