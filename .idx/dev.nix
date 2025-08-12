@@ -44,8 +44,8 @@
       enable = true;
       previews = {
         # Defines the preview for your frontend application.
-        frontend = {
-          command = ["npm" "start" "--prefix" "frontend" "--" "--port" "$PORT"];
+        web = {
+          command = ["npm" "start" "--prefix" "frontend"];
           manager = "web";
         };
       };
