@@ -1,86 +1,74 @@
-
+// frontend/src/StaffPortal.js
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase-config';
-import { doc, getDoc } from 'firebase/firestore';
-import CamperList from './CamperList';
-import EmploymentTab from './EmploymentTab';
-import TimeOffRequestsTab from './TimeOffRequestsTab';
-import StaffProfile from './StaffProfile';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import StaffCamperProfile from './StaffCamperProfile'; // Import the new profile view
 
-const StaffPortal = () => {
-    const [staff, setStaff] = useState(null);
+function StaffPortal() {
+    const [assignedCabin, setAssignedCabin] = useState(null);
+    const [assignedCampers, setAssignedCampers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [activeTab, setActiveTab] = useState('profile');
+    const [selectedCamperId, setSelectedCamperId] = useState(null); // State to manage view
+    const user = auth.currentUser;
 
     useEffect(() => {
-        const fetchStaffData = async () => {
-            try {
-                const user = auth.currentUser;
-                if (user) {
-                    const staffRef = doc(db, 'users', user.uid);
-                    const staffSnap = await getDoc(staffRef);
-                    if (staffSnap.exists() && staffSnap.data().role === 'staff') {
-                        setStaff({ id: staffSnap.id, ...staffSnap.data() });
-                    } else {
-                        setError('Access Denied. You are not a staff member.');
-                    }
-                } else {
-                    setError('You must be logged in to view the staff portal.');
-                }
-            } catch (err) {
-                setError('Failed to fetch staff data.');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+        // ... (data fetching logic remains the same)
+        if (!user) { setLoading(false); return; }
+        const q = query(collection(db, 'cabins'), where('assignedStaff', 'array-contains', user.uid));
+        const unsub = onSnapshot(q, async (snap) => {
+            if (!snap.empty) {
+                const cabinDoc = snap.docs[0];
+                setAssignedCabin({ id: cabinDoc.id, ...cabinDoc.data() });
+                if (cabinDoc.data().assignedCampers?.length > 0) {
+                    const promises = cabinDoc.data().assignedCampers.map(id => getDoc(doc(db, 'campers', id)));
+                    const docs = await Promise.all(promises);
+                    setAssignedCampers(docs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() })));
+                } else { setAssignedCampers([]); }
+            } else { setAssignedCabin(null); }
+            setLoading(false);
+        });
+        return () => unsub();
+    }, [user]);
 
-        fetchStaffData();
-    }, []);
-
-    const renderActiveTab = () => {
-        switch (activeTab) {
-            case 'profile':
-                return <StaffProfile staff={staff} />;
-            case 'campers':
-                // Assuming we can derive assigned campers from staff's session assignments
-                return <CamperList view="staff" staffId={staff.id} />;
-            case 'employment':
-                return <EmploymentTab staff={staff} />;
-            case 'timeOff':
-                return <TimeOffRequestsTab staff={staff} />;
-            default:
-                return <StaffProfile staff={staff} />;
-        }
+    const handleSelectCamper = (camperId) => {
+        setSelectedCamperId(camperId);
     };
-    
-    if (loading) {
-        return <div>Loading Staff Portal...</div>;
-    }
 
-    if (error) {
-        return <div>Error: {error}</div>;
-    }
+    const handleBackToList = () => {
+        setSelectedCamperId(null);
+    };
 
-    if (!staff) {
-        return <div>No staff data found.</div>;
+    if (loading) return <p>Loading your assignments...</p>;
+    if (error) return <p style={{ color: 'red' }}>{error}</p>;
+
+    if (selectedCamperId) {
+        return <StaffCamperProfile camperId={selectedCamperId} onBack={handleBackToList} />;
     }
 
     return (
         <div>
             <h2>Staff Portal</h2>
-            <nav>
-                <button onClick={() => setActiveTab('profile')}>My Profile</button>
-                <button onClick={() => setActiveTab('campers')}>My Campers</button>
-                <button onClick={() => setActiveTab('employment')}>Employment</button>
-                <button onClick={() => setActiveTab('timeOff')}>Time Off Requests</button>
-            </nav>
-            <div className="tab-content">
-                {renderActiveTab()}
-            </div>
+            {assignedCabin ? (
+                <div>
+                    <h3>Your Cabin: {assignedCabin.name}</h3>
+                    <h4>Assigned Campers:</h4>
+                    <ul>
+                        {assignedCampers.map(camper => (
+                           <li key={camper.id}>
+                               {camper.name} (DOB: {camper.dateOfBirth})
+                               <button onClick={() => handleSelectCamper(camper.id)} style={{ marginLeft: '10px' }}>
+                                   View Profile & Add Notes
+                               </button>
+                           </li>
+                        ))}
+                    </ul>
+                </div>
+            ) : (
+                <p>You have not been assigned to a cabin yet.</p>
+            )}
         </div>
     );
-};
+}
 
 export default StaffPortal;

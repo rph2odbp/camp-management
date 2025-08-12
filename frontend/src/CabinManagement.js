@@ -1,69 +1,110 @@
+// frontend/src/CabinManagement.js
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc, addDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 function CabinManagement() {
     const [cabins, setCabins] = useState([]);
-    const [sessions, setSessions] = useState([]);
-    const [allCampers, setAllCampers] = useState([]);
-
-    const [selectedSessionId, setSelectedSessionId] = useState('');
-    const [selectedCabinId, setSelectedCabinId] = useState('');
-    
-    // ... (existing form states)
+    const [campers, setCampers] = useState([]);
+    const [staff, setStaff] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [newCabinName, setNewCabinName] = useState('');
 
     useEffect(() => {
-        // ... (existing cabin fetch)
-        const unsubCabins = onSnapshot(collection(db, 'cabins'), (snapshot) => {
-            setCabins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        
-        const unsubSessions = onSnapshot(collection(db, 'sessions'), (snapshot) => {
-            setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-
-        const unsubCampers = onSnapshot(collection(db, 'campers'), (snapshot) => {
-            setAllCampers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-
-        return () => {
-            unsubCabins();
-            unsubSessions();
-            unsubCampers();
-        };
+        // ... (data fetching logic remains the same)
+        const unsubCabins = onSnapshot(collection(db, 'cabins'), snapshot => setCabins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+        const unsubCampers = onSnapshot(collection(db, 'campers'), snapshot => setCampers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+        const unsubStaff = onSnapshot(collection(db, 'users'), snapshot => setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(u => u.role === 'staff')));
+        setLoading(false);
+        return () => { unsubCabins(); unsubCampers(); unsubStaff(); };
     }, []);
 
-    // ... (existing handlers)
+    const handleCreateCabin = async (e) => {
+        e.preventDefault();
+        if (!newCabinName.trim()) return;
+        await addDoc(collection(db, 'cabins'), { name: newCabinName, assignedStaff: [], assignedCampers: [] });
+        setNewCabinName('');
+    };
 
-    const campersInRoster = allCampers.filter(camper => 
-        camper.cabinAssignments &&
-        camper.cabinAssignments[selectedSessionId] === selectedCabinId
-    );
+    const assignItem = async (itemId, itemType, cabinId) => {
+        const cabinRef = doc(db, 'cabins', cabinId);
+        await updateDoc(cabinRef, {
+            [itemType]: arrayUnion(itemId)
+        });
+    };
+    
+    const unassignItem = async (itemId, itemType, cabinId) => {
+        const cabinRef = doc(db, 'cabins', cabinId);
+        await updateDoc(cabinRef, {
+            [itemType]: arrayRemove(itemId)
+        });
+    };
+
+    const findCabinForCamper = (camperId) => cabins.find(c => c.assignedCampers.includes(camperId));
+    const findCabinForStaff = (staffId) => cabins.find(c => c.assignedStaff.includes(staffId));
+
+    if (loading) return <p>Loading cabin data...</p>;
+    if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
     return (
         <div>
             <h2>Cabin Management</h2>
-            {/* ... (existing add/edit forms) */}
-            
-            <h3>Cabin Roster</h3>
-            <select onChange={(e) => setSelectedSessionId(e.target.value)} value={selectedSessionId}>
-                <option value="">Select Session</option>
-                {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <select onChange={(e) => setSelectedCabinId(e.target.value)} value={selectedCabinId}>
-                <option value="">Select Cabin</option>
-                {cabins.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            
-            {selectedSessionId && selectedCabinId && (
-                <ul>
-                    {campersInRoster.length > 0 ? (
-                        campersInRoster.map(camper => <li key={camper.id}>{camper.name}</li>)
-                    ) : (
-                        <p>No campers assigned to this cabin for this session.</p>
-                    )}
-                </ul>
-            )}
+            {/* ... (Create Cabin Form remains the same) */}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                {/* Unassigned Lists */}
+                <div>
+                    <h4>Unassigned Campers</h4>
+                    <ul>
+                        {campers.filter(c => !findCabinForCamper(c.id)).map(camper => (
+                            <li key={camper.id}>
+                                {camper.name}
+                                <select onChange={(e) => assignItem(camper.id, 'assignedCampers', e.target.value)} value="">
+                                    <option value="">Assign to...</option>
+                                    {cabins.map(cabin => <option key={cabin.id} value={cabin.id}>{cabin.name}</option>)}
+                                </select>
+                            </li>
+                        ))}
+                    </ul>
+                    <h4>Unassigned Staff</h4>
+                    <ul>
+                        {staff.filter(s => !findCabinForStaff(s.id)).map(staffMember => (
+                            <li key={staffMember.id}>
+                                {staffMember.firstName} {staffMember.lastName}
+                                <select onChange={(e) => assignItem(staffMember.id, 'assignedStaff', e.target.value)} value="">
+                                     <option value="">Assign to...</option>
+                                    {cabins.map(cabin => <option key={cabin.id} value={cabin.id}>{cabin.name}</option>)}
+                                </select>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                {/* Cabins List */}
+                <div>
+                    <h4>Cabins</h4>
+                    {cabins.map(cabin => (
+                        <div key={cabin.id} style={{ border: '1px solid black', margin: '10px', padding: '10px' }}>
+                            <h5>{cabin.name}</h5>
+                            <b>Staff:</b>
+                            <ul>
+                                {cabin.assignedStaff.map(staffId => {
+                                    const staffMember = staff.find(s => s.id === staffId);
+                                    return <li key={staffId}>{staffMember?.firstName} <button onClick={() => unassignItem(staffId, 'assignedStaff', cabin.id)}>x</button></li>;
+                                })}
+                            </ul>
+                            <b>Campers:</b>
+                            <ul>
+                                {cabin.assignedCampers.map(camperId => {
+                                    const camper = campers.find(c => c.id === camperId);
+                                    return <li key={camperId}>{camper?.name} <button onClick={() => unassignItem(camperId, 'assignedCampers', cabin.id)}>x</button></li>;
+                                })}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }

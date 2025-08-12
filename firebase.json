@@ -1,4 +1,19 @@
 {
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json",
+    "database": "kateri-db"
+  },
+  "functions": {
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run lint",
+      "npm --prefix \"$RESOURCE_DIR\" run build"
+    ],
+    "source": "backend"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": "frontend/build",
     "ignore": [
@@ -12,48 +27,5 @@
         "destination": "/index.html"
       }
     ]
-  },
-  "functions": {
-    "source": "backend",
-    "codebase": "default",
-    "runtime": "nodejs20"
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "storage": {
-    "rules": "storage.rules"
-  },
-  "emulators": {
-    "auth": {
-      "port": 9099,
-      "host": "127.0.0.1"
-    },
-    "firestore": {
-      "port": 8080,
-      "host": "127.0.0.1"
-    },
-    "functions": {
-      "port": 5001,
-      "host": "127.0.0.1"
-    },
-    "storage": {
-      "port": 9199,
-      "host": "127.0.0.1"
-    },
-    "ui": {
-      "enabled": true,
-      "port": 4000,
-      "host": "127.0.0.1"
-    },
-    "hosting": {
-      "port": 5000,
-      "host": "127.0.0.1"
-    },
-    "logging": {
-        "port": 4500,
-        "host": "127.0.0.1"
-    }
   }
 }

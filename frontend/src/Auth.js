@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from './firebase-config';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+
+const registerAsParent = httpsCallable(getFunctions(), 'registerAsParent');
+const registerAsStaff = httpsCallable(getFunctions(), 'registerAsStaff');
 
 function Auth() {
   const [email, setEmail] = useState('');
@@ -8,50 +12,60 @@ function Auth() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+ useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
-    return () => unsubscribe(); // Cleanup subscription
+    return () => unsubscribe();
   }, []);
 
-  const handleSignUp = async () => {
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      setError('');
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const handleLogin = async () => {
+  const handleLogin = async (email, password) => {
+    setError('');
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      setError('');
     } catch (error) {
       setError(error.message);
     }
   };
 
-  const handleLogout = async () => {
+  const handleRegister = async (role) => {
+    setError('');
+    const email = (role === 'parent') ? parentEmail : staffEmail;
+    const password = (role === 'parent') ? parentPassword : staffPassword;
+    if (!email || !password) {
+      setError("Please provide an email and password to register.");
+      return;
+    }
+
     try {
-      await signOut(auth);
-      setError('');
+      if (role === 'parent') {
+        await registerAsParent({ email, password });
+      } else {
+        await registerAsStaff({ email, password });
+      }
+      // Automatically log the user in after successful registration
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+   const handleGoogleSignIn = async () => {
+    setError('');
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
     } catch (error) {
       setError(error.message);
     }
   };
 
   return (
-    <div>
-      {user ? (
-        <div>
-          <h2>Welcome, {user.email}</h2>
-          <button onClick={handleLogout}>Logout</button>
-        </div>
-      ) : (
-        <div>
-          <h2>Sign Up or Login</h2>
+    <div className="login-section">
+      <div className="login-container">
+        {/* Parent Login Box */}
+        <div className="login-box">
+          <h3>Parent Login</h3>
           <input
             type="email"
             placeholder="Email"
@@ -64,11 +78,35 @@ function Auth() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <button onClick={handleSignUp}>Sign Up</button>
-          <button onClick={handleLogin}>Login</button>
-          {error && <p style={{ color: 'red' }}>{error}</p>}
+          <button onClick={() => handleLogin(email, password)}>Login</button>
+          <button onClick={() => handleRegister('parent')}>Register User</button>
+          <p className="login-descriptor">Log in or register to manage campers</p>
+          <button onClick={handleGoogleSignIn} style={{backgroundColor: '#4285F4'}}>
+            Sign in with Google
+          </button>
         </div>
-      )}
+
+        {/* Staff Login Box */}
+        <div className="login-box">
+          <h3>Staff Login</h3>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button onClick={() => handleLogin(email, password)}>Login</button>
+          <button onClick={() => handleRegister('staff')}>Register to Apply</button>
+          <p className="login-descriptor">Log in or register to apply for a job</p>
+        </div>
+      </div>
+      {error && <p className="error-message">{error}</p>}
     </div>
   );
 }

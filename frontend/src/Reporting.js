@@ -1,159 +1,111 @@
+// frontend/src/Reporting.js
 import React, { useState, useEffect } from 'react';
-import { db } from './firebase-config';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { Bar, Pie, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
+
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
+
+const getReportData = httpsCallable(getFunctions(), 'getReportData');
 
 function Reporting() {
-    // Static lists, small enough to fetch once
-    const [sessions, setSessions] = useState([]);
-    const [cabins, setCabins] = useState([]);
-    
-    // State for UI
+    const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [reportType, setReportType] = useState('registrations');
-    const [selectedSessionId, setSelectedSessionId] = useState('');
-    const [selectedCabinId, setSelectedCabinId] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
 
-    // Fetch static data on component mount
     useEffect(() => {
-        const fetchStaticData = async () => {
-            setLoading(true);
+        const fetchReport = async () => {
             try {
-                const [sessionsSnapshot, cabinsSnapshot] = await Promise.all([
-                    getDocs(collection(db, 'sessions')),
-                    getDocs(collection(db, 'cabins'))
-                ]);
-                setSessions(sessionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                setCabins(cabinsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            } catch (err) {
-                setError('Failed to fetch initial report data.');
-            } finally {
-                setLoading(false);
-            }
+                const result = await getReportData();
+                // Corrected JavaScript syntax below
+                setReportData(result.data);
+            } catch (err) { setError('Failed to fetch report data.'); } 
+            finally { setLoading(false); }
         };
-        fetchStaticData();
+        fetchReport();
     }, []);
 
-    const downloadCSV = (data, filename) => {
-        if (!data || data.length === 0) {
-            alert('No data available to download for the selected criteria.');
-            return;
-        }
-        const headers = Object.keys(data[0]);
-        const csvContent = [
-            headers.join(','),
-            ...data.map(row => headers.map(header => JSON.stringify(row[header] || '')).join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.setAttribute('href', URL.createObjectURL(blob));
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const generateReport = async () => {
-        setIsGenerating(true);
-        setError('');
-        let data, filename, campersQuery;
-
-        try {
-            switch (reportType) {
-                case 'registrations':
-                    filename = 'camper_registrations.csv';
-                    campersQuery = query(collection(db, 'campers'));
-                    const allCampersSnapshot = await getDocs(campersQuery);
-                    data = allCampersSnapshot.docs.map(c => {
-                        const d = c.data();
-                        return { id: c.id, name: d.name, status: d.registrationStatus, parentName: d.parentName, parentPhone: d.parentPhone, birthdate: d.birthdate, gender: d.gender };
-                    });
-                    break;
-
-                case 'session_roster':
-                    if (!selectedSessionId) {
-                        alert('Please select a session.');
-                        setIsGenerating(false);
-                        return;
-                    }
-                    const session = sessions.find(s => s.id === selectedSessionId);
-                    filename = `session_${session.name.replace(/\s+/g, '_')}_roster.csv`;
-                    campersQuery = query(collection(db, 'campers'), where('enrolledSessionIds', 'array-contains', selectedSessionId));
-                    const sessionCampersSnapshot = await getDocs(campersQuery);
-                    data = sessionCampersSnapshot.docs.map(c => {
-                        const d = c.data();
-                        return { camperName: d.name, status: d.registrationStatus, parentName: d.parentName };
-                    });
-                    break;
-
-                case 'cabin_roster':
-                    if (!selectedCabinId || !selectedSessionId) {
-                        alert('Please select a session and a cabin.');
-                        setIsGenerating(false);
-                        return;
-                    }
-                    const cabin = cabins.find(c => c.id === selectedCabinId);
-                    const sessionForCabin = sessions.find(s => s.id === selectedSessionId);
-                    filename = `cabin_${cabin.name.replace(/\s+/g, '_')}_session_${sessionForCabin.name.replace(/\s+/g, '_')}_roster.csv`;
-                    // Firestore cannot query on map keys dynamically. We fetch by session and filter locally by cabin assignment.
-                    campersQuery = query(collection(db, 'campers'), where('enrolledSessionIds', 'array-contains', selectedSessionId));
-                    const cabinSessionCampersSnapshot = await getDocs(campersQuery);
-                    data = cabinSessionCampersSnapshot.docs
-                        .map(doc => ({id: doc.id, ...doc.data()}))
-                        .filter(c => c.cabinAssignments && c.cabinAssignments[selectedSessionId] === selectedCabinId)
-                        .map(c => ({ camperName: c.name, birthdate: c.birthdate, parentName: c.parentName }));
-                    break;
-
-                default:
-                    alert('Please select a valid report type.');
-                    setIsGenerating(false);
-                    return;
-            }
-            downloadCSV(data, filename);
-        } catch (err) {
-            setError(`Failed to generate report: ${err.message}`);
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    if (loading) return <p>Loading report data...</p>;
+    if (loading) return <p>Generating report...</p>;
     if (error) return <p style={{ color: 'red' }}>{error}</p>;
+    if (!reportData) return <p>No data to display.</p>;
+
+    const allergyChartData = {
+        labels: Object.keys(reportData.allergyDistribution),
+        datasets: [{
+            label: 'Allergy Counts',
+            data: Object.values(reportData.allergyDistribution),
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+        }],
+    };
+    
+    const sessionChartData = {
+        labels: reportData.sessionEnrollment.map(s => s.sessionName),
+        datasets: [{
+            label: 'Campers Enrolled',
+            data: reportData.sessionEnrollment.map(s => s.enrolledCount),
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+        }],
+    };
+    
+    const genderChartData = {
+        labels: Object.keys(reportData.genderDistribution),
+        datasets: [{
+            label: 'Gender Distribution',
+            data: Object.values(reportData.genderDistribution),
+            backgroundColor: ['rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)'],
+        }],
+    };
 
     return (
         <div>
-            <h2>Reporting</h2>
-            <select value={reportType} onChange={(e) => setReportType(e.target.value)}>
-                <option value="registrations">Camper Registrations</option>
-                <option value="session_roster">Session Roster</option>
-                <option value="cabin_roster">Cabin Roster</option>
-            </select>
-
-            {reportType === 'session_roster' && (
-                <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)}>
-                    <option value="">Select Session</option>
-                    {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-            )}
+            <h2>Camp Report</h2>
+            <p>Generated at: {new Date(reportData.generatedAt).toLocaleString()}</p>
             
-            {reportType === 'cabin_roster' && (
-                <>
-                    <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)}>
-                        <option value="">Select Session</option>
-                        {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                    <select value={selectedCabinId} onChange={(e) => setSelectedCabinId(e.target.value)}>
-                        <option value="">Select Cabin</option>
-                        {cabins.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                </>
-            )}
+            <h3>Total Registered Campers: {reportData.totalCampers}</h3>
+            
+            <hr />
+            
+            <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '20px' }}>
+                <div style={{ width: '45%' }}>
+                    <h4>Session Enrollment</h4>
+                    <Bar data={sessionChartData} options={{ responsive: true, plugins: { title: { display: true, text: 'Enrollment per Session' }}}} />
+                </div>
+                <div style={{ width: '40%', maxHeight: '400px' }}>
+                    <h4>Gender Distribution</h4>
+                    <Pie data={genderChartData} options={{ responsive: true, plugins: { title: { display: true, text: 'Camper Gender Distribution' }}}} />
+                </div>
+            </div>
 
-            <button onClick={generateReport} disabled={isGenerating}>
-                {isGenerating ? 'Generating...' : 'Download Report'}
-            </button>
+            <hr />
+            
+            <h4>Allergy Distribution</h4>
+            <div style={{width: '50%', margin: 'auto'}}>
+                <Doughnut data={allergyChartData} />
+            </div>
+
+            <hr />
+
+            <h4>Hospital Visit Log</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Hospital</th>
+                        <th>Reason</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {reportData.hospitalVisitLog.map((visit, index) => (
+                        <tr key={index}>
+                            <td>{new Date(visit.timestamp.toDate()).toLocaleString()}</td>
+                            <td>{visit.hospitalName}</td>
+                            <td>{visit.reason}</td>
+                            <td>{visit.note}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }

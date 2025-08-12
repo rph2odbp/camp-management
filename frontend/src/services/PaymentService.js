@@ -1,59 +1,36 @@
 // frontend/src/services/PaymentService.js
-import { db } from '../firebase-config';
-import { doc, runTransaction, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+import { auth } from '../firebase-config';
+
+const BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://your-cloud-function-url'
+  : 'http://localhost:5001/kateri-fbc/us-central1/api';
 
 /**
- * Simulates processing a deposit payment for a camper.
- * @param {string} camperId - The ID of the camper.
- * @param {number} amount - The amount of the deposit.
- * @returns {Promise<void>}
+ * Creates a Helcim hosted payment page session.
+ * @param {object} pkg - The message package object.
+ * @returns {Promise<object>} - The JSON response from the server, containing the paymentUrl.
  */
-export const processDepositPayment = async (camperId, amount) => {
-    // In a real application, you would integrate with a payment gateway here.
-    console.log(`Simulating deposit payment of $${amount} for camper ${camperId}`);
+export const createHelcimSession = async (pkg) => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('User is not authenticated.');
+  }
 
-    try {
-        await runTransaction(db, async (transaction) => {
-            const camperRef = doc(db, "campers", camperId);
-            const paymentRef = doc(collection(db, `campers/${camperId}/payments`));
+  const idToken = await user.getIdToken();
 
-            transaction.update(camperRef, { registrationStatus: "active" });
-            transaction.set(paymentRef, {
-                amount: amount,
-                type: 'deposit',
-                createdAt: serverTimestamp()
-            });
-        });
-        alert('Deposit paid successfully! Your spot is reserved.');
-    } catch (error) {
-        console.error("Deposit payment failed: ", error);
-        alert('Deposit payment failed. Please try again.');
-        throw error; // Re-throw the error to be handled by the caller
-    }
-};
+  const response = await fetch(`${BASE_URL}/payments/create-helcim-session`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ packageId: pkg.id }),
+  });
 
-/**
- * Simulates processing a general payment for a camper.
- * @param {string} camperId - The ID of the camper.
- * @param {number} amount - The amount of the payment.
- * @param {string} type - The type of payment (e.g., 'full', 'installment').
- * @returns {Promise<void>}
- */
-export const processCamperPayment = async (camperId, amount, type = 'payment') => {
-    // In a real application, you would integrate with a payment gateway here.
-    console.log(`Simulating ${type} payment of $${amount} for camper ${camperId}`);
+  if (!response.ok) {
+    const errorBody = await response.json();
+    throw new Error(errorBody.error?.message || 'Failed to create Helcim session.');
+  }
 
-    try {
-        const paymentRef = collection(db, `campers/${camperId}/payments`);
-        await addDoc(paymentRef, {
-            amount: amount,
-            type: type,
-            createdAt: serverTimestamp()
-        });
-        alert('Payment successful!');
-    } catch (error) {
-        console.error("Payment failed: ", error);
-        alert('Payment failed. Please try again.');
-        throw error; // Re-throw the error to be handled by the caller
-    }
+  return response.json();
 };

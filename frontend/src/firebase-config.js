@@ -6,11 +6,9 @@ import { getStorage } from "firebase/storage";
 import { getRemoteConfig } from "firebase/remote-config";
 import { getAnalytics } from "firebase/analytics";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAoKUvHxDd5aL-8Tg5ehOx6sbUE3kR01AE",
+  apiKey: "AIzaSyCNZL21a-E2zyL9_3tsKqAxek1juanuzmw",
   authDomain: "kateri-fbc.firebaseapp.com",
-  databaseURL: "https://kateri-fbc-default-rtdb.firebaseio.com",
   projectId: "kateri-fbc",
   storageBucket: "kateri-fbc.appspot.com",
   messagingSenderId: "735578066617",
@@ -23,7 +21,7 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize and export Firebase services
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = getFirestore(app, "kateri-db"); 
 export const storage = getStorage(app);
 export const remoteConfig = getRemoteConfig(app);
 export const analytics = getAnalytics(app);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth } from './firebase-config';
-import { collection, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from './firebase-config';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { createHelcimSession } from './services/PaymentService'; // Import the new service
 
 function PurchaseMessages() {
     const [packages, setPackages] = useState([]);
@@ -25,30 +26,17 @@ function PurchaseMessages() {
 
     const handlePurchase = async (pkg) => {
         setIsPurchasing(pkg.id);
-        const user = auth.currentUser;
-        if (!user) {
-            setError('You must be logged in to purchase.');
-            setIsPurchasing(null);
-            return;
-        }
-
-        // --- Placeholder for real payment processing ---
-        // In a real app, you would integrate with Stripe, PayPal, etc. here.
-        // For now, we'll just simulate a successful payment.
-        console.log(`Simulating payment for ${pkg.name} for user ${user.uid}`);
+        setError('');
         
         try {
-            // On successful "payment", add a document to the user's message_credits subcollection.
-            const creditDocRef = doc(collection(db, 'users', user.uid, 'message_credits'));
-            await setDoc(creditDocRef, {
-                packageId: pkg.id,
-                packageName: pkg.name,
-                credits: pkg.credits,
-                purchasedAt: serverTimestamp(),
-            });
-            alert(`Successfully purchased ${pkg.name}!`);
+            // 1. Create a Helcim session on the backend.
+            const { paymentUrl } = await createHelcimSession(pkg);
+
+            // 2. Redirect the user to the Helcim hosted payment page.
+            window.location.href = paymentUrl;
+
         } catch (err) {
-            setError('Failed to update credits after purchase.');
+            setError(`Error: ${err.message}`);
         } finally {
             setIsPurchasing(null);
         }
@@ -61,7 +49,7 @@ function PurchaseMessages() {
         <div>
             <h2>Purchase Message Credits</h2>
             {packages.map(pkg => (
-                <div key={pkg.id}>
+                <div key={pkg.id} style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}>
                     <h3>{pkg.name}</h3>
                     <p>${pkg.price} for {pkg.credits} messages</p>
                     <button onClick={() => handlePurchase(pkg)} disabled={isPurchasing === pkg.id}>

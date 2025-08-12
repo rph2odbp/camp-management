@@ -1,81 +1,70 @@
 import React, { useState } from 'react';
-import AdminSessionPanel from './AdminSessionPanel';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import UserManagement from './UserManagement';
-import CabinManagement from './CabinManagement';
-import CabinAssignment from './CabinAssignment';
-import BroadcastMessageForm from './BroadcastMessageForm';
-import MessagePrinting from './MessagePrinting';
-import MessagePackageManagement from './MessagePackageManagement';
-import AllCampersList from './AllCampersList';
-import CamperProfile from './CamperProfile';
-import StaffPortal from './StaffPortal';
-import RegistrationManagement from './RegistrationManagement';
-import RegistrationQuestionManagement from './RegistrationQuestionManagement';
-import Dashboard from './Dashboard';
+import AdminSessionPanel from './AdminSessionPanel';
 import Reporting from './Reporting';
-import MedicalStaffPanel from './MedicalStaffPanel';
+import MessagePackageManagement from './MessagePackageManagement';
+import ApplicationManagement from './ApplicationManagement';
+import CabinManagement from './CabinManagement';
+import KChat from './KChat';
+import WaitlistManagement from './WaitlistManagement';
+
+const seedDatabaseCallable = httpsCallable(getFunctions(), 'seedDatabase');
 
 function AdminPortal() {
-  const [selectedCamperId, setSelectedCamperId] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [activeMessagingTab, setActiveMessagingTab] = useState('print');
+  const [activeTab, setActiveTab] = useState('users');
+  const [seedMessage, setSeedMessage] = useState('');
 
-  const handleSelectCamper = (camperId) => {
-    setSelectedCamperId(camperId);
+  const handleSeedDatabase = async () => {
+    if (!window.confirm("Are you sure you want to seed the database? This will add new data and may create duplicates.")) {
+        return;
+    }
+    try {
+        const result = await seedDatabaseCallable();
+        // Corrected JavaScript syntax below
+        setSeedMessage(result.data.message);
+    } catch (error) {
+        setSeedMessage("Error seeding database: " + error.message);
+    }
   };
 
-  const handleBack = () => {
-    setSelectedCamperId(null);
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'users': return <UserManagement />;
+      case 'sessions': return <AdminSessionPanel />;
+      case 'cabins': return <CabinManagement />;
+      case 'waitlist': return <WaitlistManagement />;
+      case 'applications': return <ApplicationManagement />;
+      case 'messaging': return <MessagePackageManagement />;
+      case 'kchat': return <KChat />;
+      case 'reporting': return <Reporting />;
+      default: return <UserManagement />;
+    }
   };
-
-  if (selectedCamperId) {
-    return <CamperProfile camperId={selectedCamperId} onBack={handleBack} />;
-  }
-
-  const renderMessagingContent = () => {
-    return (
-      <div>
-        <nav>
-          <button onClick={() => setActiveMessagingTab('print')}>Print Messages</button>
-          <button onClick={() => setActiveMessagingTab('broadcast')}>Send Broadcast</button>
-        </nav>
-        <hr />
-        {activeMessagingTab === 'print' && <MessagePrinting />}
-        {activeMessagingTab === 'broadcast' && <BroadcastMessageForm />}
-      </div>
-    );
-  }
 
   return (
     <div>
       <h2>Admin Portal</h2>
       <nav>
-        <button onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-        <button onClick={() => setActiveTab('campers')}>Camper Management</button>
-        <button onClick={() => setActiveTab('staff')}>Staff Management</button>
-        <button onClick={() => setActiveTab('registration')}>Registration</button>
-        <button onClick={() => setActiveTab('questions')}>Reg Questions</button>
+        <button onClick={() => setActiveTab('users')}>User Management</button>
+        <button onClick={() => setActiveTab('sessions')}>Session Management</button>
         <button onClick={() => setActiveTab('cabins')}>Cabin Management</button>
-        <button onClick={() => setActiveTab('cabin-assignments')}>Cabin Assignments</button>
-        <button onClick={() => setActiveTab('messaging')}>Messaging</button>
+        <button onClick={() => setActiveTab('waitlist')}>Waitlist</button>
+        <button onClick={() => setActiveTab('applications')}>Applications</button>
+        <button onClick={() => setActiveTab('messaging')}>Messaging Packages</button>
+        <button onClick={() => setActiveTab('kchat')}>KChat</button>
         <button onClick={() => setActiveTab('reporting')}>Reporting</button>
-        <button onClick={() => setActiveTab('medical')}>Medical</button>
       </nav>
       <hr />
-      {activeTab === 'dashboard' && <Dashboard />}
-      {activeTab === 'campers' && <AllCampersList onSelectCamper={handleSelectCamper} />}
-      {activeTab === 'staff' && <StaffPortal />}
-      {activeTab === 'registration' && <RegistrationManagement onSelectCamper={handleSelectCamper} />}
-      {activeTab === 'questions' && <RegistrationQuestionManagement />}
-      {activeTab === 'cabins' && <CabinManagement />}
-      {activeTab === 'cabin-assignments' && <CabinAssignment />}
-      {activeTab === 'messaging' && renderMessagingContent()}
-      {activeTab === 'reporting' && <Reporting />}
-      {activeTab === 'medical' && <MedicalStaffPanel />}
-      <hr />
-      <UserManagement />
-      <AdminSessionPanel />
-      <MessagePackageManagement />
+      
+      <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
+          <h4>Database Seeding</h4>
+          <p>Click the button below to populate the database with initial data like sessions and message packages.</p>
+          <button onClick={handleSeedDatabase}>Seed Database</button>
+          {seedMessage && <p>{seedMessage}</p>}
+      </div>
+      
+      {renderActiveTab()}
     </div>
   );
 }

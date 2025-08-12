@@ -1,75 +1,49 @@
+// frontend/src/Charting.js
 import React, { useState, useEffect } from 'react';
-import { db, auth } from './firebase-config';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from './firebase-config';
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 
-function Charting({ camperId }) {
-    const [notes, setNotes] = useState([]);
-    const [newNote, setNewNote] = useState('');
+function Charting({ camper }) {
+    const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        if (!camperId) return;
-        setLoading(true);
-        const notesQuery = query(
-            collection(db, `campers/${camperId}/chartNotes`),
-            orderBy('timestamp', 'desc')
-        );
-        const unsubscribe = onSnapshot(notesQuery, 
-            (snapshot) => {
-                setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                setLoading(false);
-            },
-            (err) => {
-                setError('Failed to fetch chart notes.');
-                setLoading(false);
-            }
-        );
+        const chartCollectionRef = collection(db, `campers/${camper.id}/chart`);
+        const q = query(chartCollectionRef, orderBy('timestamp', 'desc'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setChartData(data);
+            setLoading(false);
+        }, (err) => {
+            setError('Failed to load chart data.');
+            setLoading(false);
+        });
+
         return () => unsubscribe();
-    }, [camperId]);
-
-    const handleAddNote = async (e) => {
-        e.preventDefault();
-        if (!newNote.trim()) return;
-
-        try {
-            await addDoc(collection(db, `campers/${camperId}/chartNotes`), {
-                content: newNote,
-                authorId: auth.currentUser.uid,
-                authorName: auth.currentUser.displayName || auth.currentUser.email,
-                timestamp: serverTimestamp()
-            });
-            setNewNote('');
-        } catch (err) {
-            setError('Failed to add note.');
-        }
-    };
+    }, [camper.id]);
 
     if (loading) return <p>Loading chart...</p>;
-    if (error) return <p style={{ color: 'red' }}>{error}</p>;
+    if (error) return <p style={{color: 'red'}}>{error}</p>;
 
     return (
         <div>
-            <h4>Charting</h4>
-            <form onSubmit={handleAddNote}>
-                <textarea 
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Add a new chart note..."
-                    required
-                />
-                <button type="submit">Add Note</button>
-            </form>
-            <ul>
-                {notes.map(note => (
-                    <li key={note.id}>
-                        <p>{note.content}</p>
-                        <small>
-                            By {note.authorName} on {note.timestamp?.toDate().toLocaleString()}
-                        </small>
-                    </li>
-                ))}
-            </ul>
+            <h4>Medical Chart</h4>
+            {chartData.length > 0 ? (
+                <ul>
+                    {chartData.map(entry => (
+                        <li key={entry.id}>
+                            <strong>{new Date(entry.timestamp.toDate()).toLocaleString()}:</strong> {entry.note}
+                            {entry.type === 'hospital_visit' && (
+                                <p>Hospital Visit: {entry.hospitalName} - Reason: {entry.reason}</p>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p>No chart entries for this camper.</p>
+            )}
         </div>
     );
 }
