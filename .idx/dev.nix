@@ -33,7 +33,10 @@
       };
 
       # Commands to run every time the workspace is (re)started.
-      onStart = {};
+      onStart = {
+        # Start the Firebase emulators. The UI will be on port 4000.
+        emulators = "firebase emulators:start";
+      };
     };
 
     # Configures web previews for your application.
@@ -43,12 +46,6 @@
         # Defines the preview for your frontend application.
         frontend = {
           command = ["npm" "start" "--prefix" "frontend" "--" "--port" "$PORT"];
-          manager = "web";
-        };
-
-        # Defines the preview for the Firebase Emulator Suite UI.
-        "emulator-ui" = {
-          command = ["firebase" "emulators:start"];
           manager = "web";
         };
       };
