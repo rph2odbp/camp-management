@@ -2,6 +2,9 @@
   # Specifies the nixpkgs channel. It's recommended to use a stable channel for reproducibility.
   channel = "stable-24.05";
 
+  # Disable IPv6 to prevent emulator binding issues
+  boot.kernel.sysctl."net.ipv6.conf.all.disable_ipv6" = 1;
+
   # The Nix packages to make available in your workspace
   # Search for packages at https://search.nixos.org/packages
   packages = [
