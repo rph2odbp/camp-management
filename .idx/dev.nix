@@ -48,14 +48,13 @@
         # Access the UI by running `firebase emulators:start` in the terminal
         # and opening the "Emulator UI" preview.
         "emulator-ui" = {
-          command = ["echo", "Firebase Emulator UI running on http://$HOST:4000"];
+          command = [ "echo" "Firebase Emulator UI running on http://$HOST:4000. Start emulators and refresh." ];
           manager = "web";
-          port = 4000;
         };
         # Web App Preview (Hosting Emulator)
         # This preview will show your web application served by the hosting emulator.
         "web-app" = {
-          command = ["npm", "start", "--prefix", "frontend"];
+          command = ["npm" "start" "--prefix" "frontend" "--" "--port" "$PORT"];
           manager = "web";
         };
       };
