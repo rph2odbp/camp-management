@@ -1,66 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth } from './firebase-config';
-import { collection, query, onSnapshot, doc, getDocs, orderBy, addDoc, Timestamp, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { db } from './firebase-config'; // Assuming firebase-config exports db
+import { collection, query, onSnapshot, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
+/**
+ * MedicalPanel Component
+ * 
+ * This component provides a dashboard for medical staff to view camper information,
+ * manage medical documents, and review medical details like allergies and medications.
+ * 
+ * Features:
+ * - Fetches and displays a list of all campers in real-time.
+ * - Allows searching for campers by name.
+ * - Accordion-style view to expand a camper's detailed information.
+ * - Tabbed interface within each camper's view for 'Overview' and 'Documents'.
+ * - 'Overview' tab shows allergies, dietary restrictions, medications, and emergency contacts.
+ * - 'Documents' tab allows uploading and deleting medical files (e.g., insurance cards, doctor's notes).
+ * - File uploads are categorized and displayed with their name, size, and a delete button.
+ */
 function MedicalPanel() {
+    // State for core functionality
     const [campers, setCampers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [allergyFilter, setAllergyFilter] = useState('');
-    const [dietaryFilter, setDietaryFilter] = useState('');
-    const [otherInfoFilter, setOtherInfoFilter] = useState('');
-    const [medicationFilter, setMedicationFilter] = useState('');
-    const [contactFilter, setContactFilter] = useState('');
-    const [sortCriterion, setSortCriterion] = useState('name');
-    const [sortDirection, setSortDirection] = useState('asc');
+
+    // State for UI interaction
     const [expandedCamperId, setExpandedCamperId] = useState(null);
-    const [medicalHistoryEntries, setMedicalHistoryEntries] = useState({});
-    const [medicalObservations, setMedicalObservations] = useState({});
-    const [loadingHistory, setLoadingHistory] = useState(false);
-    const [loadingObservations, setLoadingObservations] = useState(false);
-    const [historyError, setHistoryError] = useState('');
-    const [observationsError, setObservationsError] = useState('');
-    const [newEntryType, setNewEntryType] = useState('');
-    const [newEntryNotes, setNewEntryNotes] = useState('');
-    const [addingEntry, setAddingEntry] = useState(false);
-    const [addEntryError, setAddEntryError] = useState('');
-    const [newMedicationName, setNewMedicationName] = useState('');
-    const [newMedicationDosage, setNewMedicationDosage] = useState('');
-    const [newMedicationTime, setNewMedicationTime] = useState('');
-    const [newMedicationRoute, setNewMedicationRoute] = useState('');
-    const [newInjuryType, setNewInjuryType] = useState('');
-    const [newInjuryLocation, setNewInjuryLocation] = useState('');
-    const [newInjuryCause, setNewInjuryCause] = useState('');
-    const [newInjuryTreatment, setNewInjuryTreatment] = useState('');
-    const [recordedByUsersData, setRecordedByUsersData] = useState({});
-    const [loadingRecordedByUsers, setLoadingRecordedByUsers] = useState(false);
-    const [newObservationType, setNewObservationType] = useState('');
-    const [newObservationNotes, setNewObservationNotes] = useState('');
-    const [addingObservation, setAddingObservation] = useState(false);
-    const [addObservationError, setAddObservationError] = useState('');
-    const [editingHistoryEntryId, setEditingHistoryEntryId] = useState(null);
-    const [editEntryType, setEditEntryType] = useState('');
-    const [editEntryNotes, setEditEntryNotes] = useState('');
-    const [editMedicationName, setEditMedicationName] = useState('');
-    const [editMedicationDosage, setEditMedicationDosage] = useState('');
-    const [editMedicationTime, setEditMedicationTime] = useState('');
-    const [editMedicationRoute, setEditMedicationRoute] = useState('');
-    const [editInjuryType, setEditInjuryType] = useState('');
-    const [editInjuryLocation, setEditInjuryLocation] = useState('');
-    const [editInjuryCause, setEditInjuryCause] = useState('');
-    const [editInjuryTreatment, setEditInjuryTreatment] = useState('');
-    const [editingObservationId, setEditingObservationId] = useState(null);
-    const [editObservationType, setEditObservationType] = useState('');
-    const [editObservationNotes, setEditObservationNotes] = useState('');
+    const [activeTab, setActiveTab] = useState({});
+
+    // State for file uploads
     const [uploadingFile, setUploadingFile] = useState(false);
     const [uploadError, setUploadError] = useState('');
     const [uploadSuccess, setUploadSuccess] = useState('');
-    const [activeTab, setActiveTab] = useState({});
     const [fileCategory, setFileCategory] = useState('');
 
+    // Initialize Firebase services
     const storage = getStorage();
+
+    // Defined categories for medical file uploads
     const fileCategories = [
         "Immunization Record",
         "Insurance Card",
@@ -70,15 +48,12 @@ function MedicalPanel() {
         "Other"
     ];
 
+    // Effect to subscribe to real-time camper data from Firestore
     useEffect(() => {
         setLoading(true);
-        setError('');
         const q = query(collection(db, 'campers'));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const campersData = [];
-            querySnapshot.forEach((doc) => {
-                campersData.push({ id: doc.id, ...doc.data() });
-            });
+            const campersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setCampers(campersData);
             setLoading(false);
         }, (err) => {
@@ -86,87 +61,55 @@ function MedicalPanel() {
             setError('Error fetching campers: ' + err.message);
             setLoading(false);
         });
+        // Cleanup subscription on component unmount
         return () => unsubscribe();
     }, []);
 
+    // Toggles the expanded view for a camper
     const handleToggleExpand = (camperId) => {
         const isOpening = expandedCamperId !== camperId;
         setExpandedCamperId(isOpening ? camperId : null);
+        // Default to 'overview' tab when opening
         if (isOpening) {
             setActiveTab(prev => ({ ...prev, [camperId]: 'overview' }));
         }
     };
     
+    // Sets the active tab for a given camper
     const handleSetTab = (camperId, tabName) => {
         setActiveTab(prev => ({ ...prev, [camperId]: tabName }));
     };
 
+    // Deletes a medical file from both Firebase Storage and its metadata from Firestore
     const handleDeleteMedicalFile = async (camperId, fileToDelete) => {
         if (!window.confirm(`Are you sure you want to delete the file "${fileToDelete.name}"?`)) {
             return;
         }
 
         try {
-            // 1. Delete file from Storage
+            // Delete file from Storage
             const fileRef = ref(storage, fileToDelete.path);
             await deleteObject(fileRef);
-            console.log("File deleted from Storage.");
 
-            // 2. Remove file metadata from Firestore
+            // Remove file metadata from Firestore
             const camperDocRef = doc(db, 'campers', camperId);
             const camperDocSnap = await getDoc(camperDocRef);
             if (camperDocSnap.exists()) {
-                const camperData = camperDocSnap.data();
-                const updatedFiles = camperData.otherMedicalFiles.filter(
+                const updatedFiles = (camperDocSnap.data().otherMedicalFiles || []).filter(
                     (file) => file.path !== fileToDelete.path
                 );
-                await updateDoc(camperDocRef, {
-                    otherMedicalFiles: updatedFiles
-                });
-                console.log("File metadata removed from Firestore.");
+                await updateDoc(camperDocRef, { otherMedicalFiles: updatedFiles });
             }
-        } catch (error) {
-            console.error("Error deleting medical file:", error);
-            alert("Error deleting file: " + error.message);
+        } catch (err) {
+            console.error("Error deleting medical file:", err);
+            alert("Error deleting file: " + err.message);
         }
     };
     
-    const saveMedicalFileMetadata = async (camperId, fileMetadata) => {
-        try {
-            const camperDocRef = doc(db, 'campers', camperId);
-            const camperDocSnap = await getDoc(camperDocRef);
-
-            if (camperDocSnap.exists()) {
-                const camperData = camperDocSnap.data();
-                const existingFiles = camperData.otherMedicalFiles || [];
-                const updatedFiles = [...existingFiles, fileMetadata];
-
-                await updateDoc(camperDocRef, {
-                    otherMedicalFiles: updatedFiles
-                });
-                console.log("Medical file metadata saved to Firestore.");
-                setUploadSuccess('File uploaded and metadata saved successfully!');
-                setUploadError('');
-            } else {
-                console.error("Camper document not found:", camperId);
-                setUploadError('Error: Camper document not found.');
-                setUploadSuccess('');
-            }
-        } catch (error) {
-            console.error('Error saving medical file metadata:', error);
-            setUploadError('Error saving file metadata: ' + error.message);
-            setUploadSuccess('');
-        }
-    };
-
-    const handleFileSelect = async (event) => {
+    // Handles the file selection, upload to Storage, and metadata saving to Firestore
+    const handleFileSelect = async (event, camperId) => {
         const file = event.target.files[0];
         if (!file) return;
-
-        if (!expandedCamperId) {
-            setUploadError("Please select a camper to upload files for.");
-            return;
-        }
 
         if (!fileCategory) {
             setUploadError("Please select a file category.");
@@ -177,13 +120,15 @@ function MedicalPanel() {
         setUploadError('');
         setUploadSuccess('');
 
-        const storageRef = ref(storage, `campers/${expandedCamperId}/medical-files/${file.name}`);
+        const storageRef = ref(storage, `campers/${camperId}/medical-files/${file.name}`);
 
         try {
+            // Upload file
             const snapshot = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
-            await saveMedicalFileMetadata(expandedCamperId, {
+            // Prepare metadata
+            const fileMetadata = {
                 name: file.name,
                 url: downloadURL,
                 path: snapshot.ref.fullPath,
@@ -191,35 +136,37 @@ function MedicalPanel() {
                 size: file.size,
                 uploadedAt: Timestamp.now(),
                 category: fileCategory,
-            });
+            };
 
+            // Save metadata to Firestore
+            const camperDocRef = doc(db, 'campers', camperId);
+            const camperDocSnap = await getDoc(camperDocRef);
+            if (camperDocSnap.exists()) {
+                const existingFiles = camperDocSnap.data().otherMedicalFiles || [];
+                await updateDoc(camperDocRef, {
+                    otherMedicalFiles: [...existingFiles, fileMetadata]
+                });
+                setUploadSuccess('File uploaded successfully!');
+            } else {
+                throw new Error("Camper document not found.");
+            }
+
+            // Reset form
             setFileCategory('');
             event.target.value = null;
 
-        } catch (error) {
-            console.error('Error uploading file:', error);
-            setUploadError('Error uploading file: ' + error.message);
+        } catch (err) {
+            console.error('Error uploading file:', err);
+            setUploadError('Upload failed: ' + err.message);
         } finally {
             setUploadingFile(false);
         }
     };
 
-    const filteredCampers = campers.filter(camper => {
-        const nameMatch = camper.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const allergyMatch = camper.allergies?.toLowerCase().includes(allergyFilter.toLowerCase()) || allergyFilter === '';
-        const dietaryMatch = camper.dietaryRestrictions?.toLowerCase().includes(dietaryFilter.toLowerCase()) || dietaryFilter === '';
-        const otherInfoMatch = camper.otherImportantInformation?.toLowerCase().includes(otherInfoFilter.toLowerCase()) || otherInfoFilter === '';
-
-        return nameMatch && allergyMatch && dietaryMatch && otherInfoMatch;
-    });
-
-    const sortedCampers = [...filteredCampers].sort((a, b) => {
-        const aValue = a[sortCriterion];
-        const bValue = b[sortCriterion];
-        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-    });
+    // Filter campers based on search term
+    const filteredCampers = campers.filter(camper => 
+        camper.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     if (loading) return <p>Loading camper medical data...</p>;
     if (error) return <p style={{ color: 'red' }}>{error}</p>;
@@ -228,15 +175,19 @@ function MedicalPanel() {
     return (
         <div>
             <h2>Medical Panel</h2>
-            {/* Search and filter inputs */}
             <div>
-                <label htmlFor="searchCamper">Search by Name:</label>
-                <input id="searchCamper" type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Camper name"/>
-                {/* Other filters can be added here */}
+                <label htmlFor="searchCamper">Search by Name: </label>
+                <input 
+                    id="searchCamper" 
+                    type="text" 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    placeholder="Camper name"
+                />
             </div>
 
             <ul>
-                {sortedCampers.map(camper => (
+                {filteredCampers.map(camper => (
                     <li key={camper.id}>
                         <div onClick={() => handleToggleExpand(camper.id)} style={{ cursor: 'pointer', fontWeight: 'bold' }}>
                             <h3>{camper.name}</h3>
@@ -257,15 +208,14 @@ function MedicalPanel() {
                                             <h4>Medical Information</h4>
                                             <p><strong>Allergies:</strong> {camper.allergies || 'None'}</p>
                                             <p><strong>Dietary Restrictions:</strong> {camper.dietaryRestrictions || 'None'}</p>
-                                            <p><strong>Other Important Info:</strong> {camper.otherImportantInformation || 'None'}</p>
                                             
                                             <h4>Medications</h4>
-                                            {camper.medication && camper.medication.length > 0 ? (
+                                            {camper.medication?.length > 0 ? (
                                                 <ul>{camper.medication.map((med, index) => <li key={index}>{med.type} - {med.dosage} ({med.time}) - Route: {med.route}</li>)}</ul>
                                             ) : <p>No medications listed.</p>}
 
                                             <h4>Emergency Contacts</h4>
-                                            {camper.emergencyContacts && camper.emergencyContacts.length > 0 ? (
+                                            {camper.emergencyContacts?.length > 0 ? (
                                                 <ul>{camper.emergencyContacts.map((contact, index) => <li key={index}>{contact.name} ({contact.relationship}): {contact.phone}</li>)}</ul>
                                             ) : <p>No emergency contacts listed.</p>}
                                         </div>
@@ -273,40 +223,43 @@ function MedicalPanel() {
 
                                     {activeTab[camper.id] === 'history' && (
                                         <div>
-                                            {/* Medical History & Observations will go here */}
-                                            <p>Medical history and observations functionality to be displayed here.</p>
+                                            <p>Medical history and note-taking features will be implemented here.</p>
                                         </div>
                                     )}
 
-                                    {activeTab[camper.id] === 'documents' && (
+                                    {active.Tab[camper.id] === 'documents' && (
                                         <div>
                                             <h4>Medical Documents</h4>
-                                            {fileCategories.map(category => {
-                                                const filesInCategory = camper.otherMedicalFiles?.filter(file => file.category === category) || [];
-                                                if (filesInCategory.length === 0) return null;
-                                                return (
-                                                    <div key={category}>
-                                                        <h5>{category}</h5>
-                                                        <ul>
-                                                            {filesInCategory.map((file, index) => (
-                                                                <li key={index}>
-                                                                    <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a>
-                                                                    {' '} ({(file.size / 1024).toFixed(2)} KB)
-                                                                    <button onClick={() => handleDeleteMedicalFile(camper.id, file)}>Delete</button>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                );
-                                            })}
+                                            {/* Display existing files */}
+                                            {camper.otherMedicalFiles?.length > 0 ? (
+                                                fileCategories.map(category => {
+                                                    const filesInCategory = camper.otherMedicalFiles.filter(file => file.category === category);
+                                                    if (filesInCategory.length === 0) return null;
+                                                    return (
+                                                        <div key={category}>
+                                                            <h5>{category}</h5>
+                                                            <ul>
+                                                                {filesInCategory.map((file, index) => (
+                                                                    <li key={index}>
+                                                                        <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a>
+                                                                        {' '} ({(file.size / 1024).toFixed(2)} KB)
+                                                                        <button onClick={() => handleDeleteMedicalFile(camper.id, file)}>Delete</button>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : <p>No medical documents uploaded.</p>}
                                             
+                                            {/* File upload form */}
                                             <div>
                                                 <h5>Upload New Medical File</h5>
                                                 <select value={fileCategory} onChange={(e) => setFileCategory(e.target.value)} required>
                                                     <option value="">Select a Category</option>
                                                     {fileCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                                 </select>
-                                                <input type="file" onChange={handleFileSelect} disabled={uploadingFile} />
+                                                <input type="file" onChange={(e) => handleFileSelect(e, camper.id)} disabled={uploadingFile || !fileCategory} />
                                                 {uploadingFile && <p>Uploading...</p>}
                                                 {uploadError && <p style={{ color: 'red' }}>{uploadError}</p>}
                                                 {uploadSuccess && <p style={{ color: 'green' }}>{uploadSuccess}</p>}

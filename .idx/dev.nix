@@ -1,63 +1,60 @@
 { pkgs, ... }: {
+  # Specifies the nixpkgs channel. It's recommended to use a stable channel for reproducibility.
+  channel = "stable-24.05";
+
   # The Nix packages to make available in your workspace
   # Search for packages at https://search.nixos.org/packages
   packages = [
-    pkgs.firebase-tools
     pkgs.jdk17
     pkgs.nodejs_20
-    pkgs.google-cloud-sdk
   ];
 
-  # The VS Code extensions to install in your workspace
-  # Search for extensions at https://open-vsx.org/
-  idx.extensions = [
-    "dbaeumer.vscode-eslint"
-    "esbenp.prettier-vscode"
-    "vscode.emmet"
-    "ms-azuretools.vscode-docker"
-    "github.copilot"
-    "ms-vscode.vscode-typescript-next"
-    "apollographql.vscode-apollo"
-    "figma.figma-for-vs-code"
-    "wallabyjs.wallaby-vscode"
-  ];
-  
-  # Workspace lifecycle hooks
-  idx.workspace = {
-    # Runs when a workspace is first created
-    onCreate = {
-      install-npm-packages = "npm install && npm install --prefix backend && npm install --prefix frontend";
-      #build-backend = "npm run build --prefix backend";
-    };
-    # Runs every time the workspace is (re)started
-    onStart = {
-      #start-backend = "npm run start --prefix backend";
-      #start-frontend = "npm start --prefix frontend";
-    };
-  };
+  # All `idx` configurations should be nested under a single `idx` attribute.
+  idx = {
+    # The VS Code extensions to install in your workspace
+    # Search for extensions at https://open-vsx.org/
+    extensions = [
+      "dbaeumer.vscode-eslint"
+      "esbenp.prettier-vscode"
+      "vscode.emmet"
+      "ms-azuretools.vscode-docker"
+      "github.copilot"
+      "ms-vscode.vscode-typescript-next"
+      "apollographql.vscode-apollo"
+      "figma.figma-for-vs-code"
+      "wallabyjs.wallaby-vscode"
+    ];
 
-  # Web-based previews
-  idx.previews = {
-    enable = true;
+    # Workspace lifecycle hooks
+    workspace = {
+      # Runs when a workspace is first created
+      onCreate = {
+        # Install firebase-tools globally and all other dependencies
+        install-dependencies = "npm install -g firebase-tools && npm install && npm install --prefix backend && npm install --prefix frontend";
+      };
+      # onStart is removed as previews now handle service startup.
+      onStart = {};
+    };
+
+    # Configure web previews for the Firebase Emulator Suite and the frontend app
     previews = {
-      web = {
-        # The name that will show up in the Preview panel
-        id = "web";
-        # The command to run to start your app
-        command = ["npm" "start" "--prefix" "frontend"];
-        # "web" will open this in a new tab.
-        # "web-embedded" will open this in a panel inside the editor
-        manager = "web";
-      };
-      storybook = {
-        id = "storybook";
-        command = ["npm" "run" "storybook" "--prefix" "frontend"];
-        manager = "web";
-      };
-      "firebase-emulator-ui" = {
-        id = "firebase-emulator-ui";
-        command = ["firebase" "emulators:start"];
-        manager = "web";
+      enable = true;
+      previews = {
+        # Emulator UI + All Emulators
+        # This preview starts all Firebase emulators. The Emulator UI will be available on port 4000.
+        # IDX automatically forwards the ports defined in firebase.json.
+        emulators = {
+          command = ["firebase", "emulators:start", "--import=./firebase-data", "--export-on-exit"];
+          manager = "web";
+        };
+
+        # Web App Preview (Hosting Emulator)
+        # This preview starts the frontend development server.
+        # It will be available on port 5000, as served by the Hosting Emulator.
+        web = {
+          command = ["npm", "start", "--prefix", "frontend"];
+          manager = "web";
+        };
       };
     };
   };
