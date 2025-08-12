@@ -5,8 +5,10 @@
   # The Nix packages to make available in your workspace
   # Search for packages at https://search.nixos.org/packages
   packages = [
+    # firebase-tools is now installed via npm in the onCreate hook below
     pkgs.jdk17
     pkgs.nodejs_20
+    # pkgs.google-cloud-sdk
   ];
 
   # All `idx` configurations should be nested under a single `idx` attribute.
@@ -29,29 +31,30 @@
     workspace = {
       # Runs when a workspace is first created
       onCreate = {
-        # Install firebase-tools globally and all other dependencies
-        install-dependencies = "npm install -g firebase-tools && npm install && npm install --prefix backend && npm install --prefix frontend";
+        # Install firebase-tools globally via npm to avoid Nix build issues
+        install-firebase-and-npm-packages = "npm install -g firebase-tools && npm install && npm install --prefix backend && npm install --prefix frontend";
       };
-      # onStart is removed as previews now handle service startup.
+      # onStart is removed to prevent conflicts with the Firebase emulator
+      # You should start the emulators manually with `firebase emulators:start`
       onStart = {};
     };
 
-    # Configure web previews for the Firebase Emulator Suite and the frontend app
+    # Configure web previews for the Firebase Emulator Suite
+    # See https://firebase.google.com/docs/emulator-suite/install_and_configure#configure_emulator_suite
     previews = {
       enable = true;
       previews = {
-        # Emulator UI + All Emulators
-        # This preview starts all Firebase emulators. The Emulator UI will be available on port 4000.
-        # IDX automatically forwards the ports defined in firebase.json.
-        emulators = {
-          command = ["firebase", "emulators:start", "--import=./firebase-data", "--export-on-exit"];
+        # Emulator UI
+        # Access the UI by running `firebase emulators:start` in the terminal
+        # and opening the "Emulator UI" preview.
+        "emulator-ui" = {
+          command = ["echo", "Firebase Emulator UI running on http://$HOST:4000"];
           manager = "web";
+          port = 4000;
         };
-
         # Web App Preview (Hosting Emulator)
-        # This preview starts the frontend development server.
-        # It will be available on port 5000, as served by the Hosting Emulator.
-        web = {
+        # This preview will show your web application served by the hosting emulator.
+        "web-app" = {
           command = ["npm", "start", "--prefix", "frontend"];
           manager = "web";
         };

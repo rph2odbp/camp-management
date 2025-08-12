@@ -227,7 +227,7 @@ function MedicalPanel() {
                                         </div>
                                     )}
 
-                                    {active.Tab[camper.id] === 'documents' && (
+                                    {activeTab[camper.id] === 'documents' && (
                                         <div>
                                             <h4>Medical Documents</h4>
                                             {/* Display existing files */}
