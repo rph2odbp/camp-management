@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from './firebase-config';
+import { db, remoteConfig } from './firebase-config'; // Import remoteConfig
 import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { fetchAndActivate, getBoolean } from 'firebase/remote-config'; // Import remote config functions
 
 function ApplicationManagement() {
     const [applications, setApplications] = useState([]);
@@ -8,6 +9,19 @@ function ApplicationManagement() {
     const [error, setError] = useState('');
     const [filter, setFilter] = useState('submitted');
     const [selectedApplication, setSelectedApplication] = useState(null);
+    const [hiringEnabled, setHiringEnabled] = useState(true); // State for the feature flag
+
+    // Fetch feature flag from Remote Config
+    useEffect(() => {
+        fetchAndActivate(remoteConfig)
+          .then(() => {
+            setHiringEnabled(getBoolean(remoteConfig, 'hiring_feature_enabled'));
+          })
+          .catch((err) => {
+            console.error('Failed to fetch remote config for feature flags', err);
+            // In case of error, default to the value in the code.
+          });
+    }, []);
 
     useEffect(() => {
         setLoading(true);
@@ -80,7 +94,8 @@ function ApplicationManagement() {
                     <option value="rejected">Rejected</option>
                     <option value="hired">Hired</option>
                 </select>
-                {selectedApplication.status !== 'hired' && (
+                {/* Conditionally render the button based on the feature flag */}
+                {hiringEnabled && selectedApplication.status !== 'hired' && (
                     <button onClick={() => handleHire(selectedApplication)}>Hire Applicant</button>
                 )}
             </div>

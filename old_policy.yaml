@@ -1,0 +1,12 @@
+bindings:
+- members:
+  - domain:admysterium.com
+  role: roles/billing.creator
+- members:
+  - user:ryanhallford@admysterium.com
+  role: roles/resourcemanager.organizationAdmin
+- members:
+  - domain:admysterium.com
+  role: roles/resourcemanager.projectCreator
+etag: BwY8G0ubJk4=
+version: 1

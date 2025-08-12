@@ -1,24 +1,20 @@
-# Current Task Reminder
+# Current Task: Setting Up Firebase Local Emulators
 
-Our main objective is to migrate the Firebase project `kateri-fbc` into your Google Cloud Organization.
+Our main goal is to run the application locally for development using the Firebase Emulator Suite. This will allow us to bypass the cloud IAM policies and permissions that were blocking us.
 
 ## Blocker
-We are currently blocked by the **"Domain Restricted Sharing"** organization policy (`constraints/iam.allowedPolicyMemberDomains`). This policy prevents us from granting the necessary `Project Creator` role to your personal `@gmail.com` account, which is required to perform the migration.
+The Firebase Emulators require the Java Development Kit (JDK) to run, but it was not installed in the environment.
 
 ## Current Status
-1.  We attempted to use the Google Cloud Console, but failed because even a Super Admin can be blocked by API/credential restrictions.
-2.  We decided to use the `gcloud` command-line tool to bypass this.
-3.  The `gcloud` command was not found in the environment.
-4.  I have just added the `google-cloud-sdk` package to your `.idx/dev.nix` file.
+1. I have updated the `.idx/dev.nix` file to include the `pkgs.jdk` package.
+2. I have configured `firebase.json` with the necessary emulator settings.
+3. I have updated `frontend/src/firebase-config.js` to automatically connect the frontend to the emulators when running on `localhost`.
 
 ## Action Required By You
-You need to **reload the environment** by clicking the "Reload" button in the notification. This will install `gcloud` and make it available in the terminal.
+You need to **rebuild the environment** by clicking the "Reload" button in the notification at the bottom-right of your screen. This will install the JDK.
 
-## Plan After Reload
-Once you reload and tell me to continue, I will guide you through the following steps using the terminal:
-1.  Authenticate `gcloud` using your Super Admin account.
-2.  Get your Organization ID.
-3.  Create a `policy.yaml` file to disable the domain restriction.
-4.  Apply this policy to your organization.
-5.  Proceed with the project migration.
-6.  Re-enable the security policy.
+## Plan After Rebuild
+Once the environment has reloaded and you tell me to continue, I will:
+1. Run the `firebase emulators:start` command.
+2. This will start the local emulators for Authentication, Firestore, Functions, and Storage.
+3. I will then guide you on how to access the Emulator UI and your locally running frontend application.

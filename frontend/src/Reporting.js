@@ -1,36 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 function Reporting() {
-    const [campers, setCampers] = useState([]);
+    // Static lists, small enough to fetch once
     const [sessions, setSessions] = useState([]);
     const [cabins, setCabins] = useState([]);
+    
+    // State for UI
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [reportType, setReportType] = useState('registrations');
     const [selectedSessionId, setSelectedSessionId] = useState('');
     const [selectedCabinId, setSelectedCabinId] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
 
+    // Fetch static data on component mount
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchStaticData = async () => {
             setLoading(true);
             try {
-                const [campersSnapshot, sessionsSnapshot, cabinsSnapshot] = await Promise.all([
-                    getDocs(collection(db, 'campers')),
+                const [sessionsSnapshot, cabinsSnapshot] = await Promise.all([
                     getDocs(collection(db, 'sessions')),
                     getDocs(collection(db, 'cabins'))
                 ]);
-                setCampers(campersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 setSessions(sessionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 setCabins(cabinsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             } catch (err) {
-                setError('Failed to fetch report data.');
+                setError('Failed to fetch initial report data.');
             } finally {
                 setLoading(false);
             }
         };
-        fetchData();
+        fetchStaticData();
     }, []);
 
     const downloadCSV = (data, filename) => {
@@ -53,41 +55,68 @@ function Reporting() {
         document.body.removeChild(link);
     };
 
-    const generateReport = () => {
-        let data, filename;
-        switch (reportType) {
-            case 'registrations':
-                filename = 'camper_registrations.csv';
-                data = campers.map(c => ({ id: c.id, name: c.name, status: c.registrationStatus, parentName: c.parentName, parentPhone: c.parentPhone, birthdate: c.birthdate, gender: c.gender }));
-                break;
-            case 'session_roster':
-                if (!selectedSessionId) {
-                    alert('Please select a session.');
+    const generateReport = async () => {
+        setIsGenerating(true);
+        setError('');
+        let data, filename, campersQuery;
+
+        try {
+            switch (reportType) {
+                case 'registrations':
+                    filename = 'camper_registrations.csv';
+                    campersQuery = query(collection(db, 'campers'));
+                    const allCampersSnapshot = await getDocs(campersQuery);
+                    data = allCampersSnapshot.docs.map(c => {
+                        const d = c.data();
+                        return { id: c.id, name: d.name, status: d.registrationStatus, parentName: d.parentName, parentPhone: d.parentPhone, birthdate: d.birthdate, gender: d.gender };
+                    });
+                    break;
+
+                case 'session_roster':
+                    if (!selectedSessionId) {
+                        alert('Please select a session.');
+                        setIsGenerating(false);
+                        return;
+                    }
+                    const session = sessions.find(s => s.id === selectedSessionId);
+                    filename = `session_${session.name.replace(/\s+/g, '_')}_roster.csv`;
+                    campersQuery = query(collection(db, 'campers'), where('enrolledSessionIds', 'array-contains', selectedSessionId));
+                    const sessionCampersSnapshot = await getDocs(campersQuery);
+                    data = sessionCampersSnapshot.docs.map(c => {
+                        const d = c.data();
+                        return { camperName: d.name, status: d.registrationStatus, parentName: d.parentName };
+                    });
+                    break;
+
+                case 'cabin_roster':
+                    if (!selectedCabinId || !selectedSessionId) {
+                        alert('Please select a session and a cabin.');
+                        setIsGenerating(false);
+                        return;
+                    }
+                    const cabin = cabins.find(c => c.id === selectedCabinId);
+                    const sessionForCabin = sessions.find(s => s.id === selectedSessionId);
+                    filename = `cabin_${cabin.name.replace(/\s+/g, '_')}_session_${sessionForCabin.name.replace(/\s+/g, '_')}_roster.csv`;
+                    // Firestore cannot query on map keys dynamically. We fetch by session and filter locally by cabin assignment.
+                    campersQuery = query(collection(db, 'campers'), where('enrolledSessionIds', 'array-contains', selectedSessionId));
+                    const cabinSessionCampersSnapshot = await getDocs(campersQuery);
+                    data = cabinSessionCampersSnapshot.docs
+                        .map(doc => ({id: doc.id, ...doc.data()}))
+                        .filter(c => c.cabinAssignments && c.cabinAssignments[selectedSessionId] === selectedCabinId)
+                        .map(c => ({ camperName: c.name, birthdate: c.birthdate, parentName: c.parentName }));
+                    break;
+
+                default:
+                    alert('Please select a valid report type.');
+                    setIsGenerating(false);
                     return;
-                }
-                const session = sessions.find(s => s.id === selectedSessionId);
-                filename = `session_${session.name.replace(/\s+/g, '_')}_roster.csv`;
-                data = campers
-                    .filter(c => c.enrolledSessionIds?.includes(selectedSessionId))
-                    .map(c => ({ camperName: c.name, status: c.registrationStatus, parentName: c.parentName }));
-                break;
-            case 'cabin_roster':
-                if (!selectedCabinId || !selectedSessionId) {
-                    alert('Please select a session and a cabin.');
-                    return;
-                }
-                const cabin = cabins.find(c => c.id === selectedCabinId);
-                const sessionForCabin = sessions.find(s => s.id === selectedSessionId);
-                filename = `cabin_${cabin.name.replace(/\s+/g, '_')}_session_${sessionForCabin.name.replace(/\s+/g, '_')}_roster.csv`;
-                data = campers
-                    .filter(c => c.cabinAssignments && c.cabinAssignments[selectedSessionId] === selectedCabinId)
-                    .map(c => ({ camperName: c.name, birthdate: c.birthdate, parentName: c.parentName }));
-                break;
-            default:
-                alert('Please select a valid report type.');
-                return;
+            }
+            downloadCSV(data, filename);
+        } catch (err) {
+            setError(`Failed to generate report: ${err.message}`);
+        } finally {
+            setIsGenerating(false);
         }
-        downloadCSV(data, filename);
     };
 
     if (loading) return <p>Loading report data...</p>;
@@ -122,7 +151,9 @@ function Reporting() {
                 </>
             )}
 
-            <button onClick={generateReport}>Download Report</button>
+            <button onClick={generateReport} disabled={isGenerating}>
+                {isGenerating ? 'Generating...' : 'Download Report'}
+            </button>
         </div>
     );
 }

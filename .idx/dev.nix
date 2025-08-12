@@ -1,45 +1,41 @@
-# To learn more about how to use Nix to configure your environment
-# see: https://developers.google.com/idx/guides/customize-idx-env
 { pkgs, ... }: {
-  # Which nixpkgs channel to use.
-  channel = "stable-24.05"; # or "unstable"
-  # Use https://search.nixos.org/packages to find packages
+  channel = "stable-24.05";
   packages = [
-    # pkgs.go
     pkgs.nodejs_20
     pkgs.firebase-tools
-    # Add the Google Cloud SDK to make the `gcloud` command available
     pkgs.google-cloud-sdk
   ];
-  # Sets environment variables in the workspace
   env = {};
   idx = {
-    # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
-      # "vscodevim.vim"
       "dbaeumer.vscode-eslint"
-      "esbenp.prettier-vscode"
     ];
+    workspace = {
+      onCreate = {
+        npm-install = "npm install";
+        frontend-npm-install = "npm install --prefix frontend";
+        backend-npm-install = "npm install --prefix backend";
+      };
+      # The onStart hook is no longer needed to start servers,
+      # as this is now handled by the previews section.
+      onStart = {};
+    };
     previews = {
       enable = true;
       previews = {
-        web = {
-          command = ["sh" "-c" "cd frontend/ && npm start"];
+        # This defines the preview for your frontend application.
+        # It runs on a port that Firebase Studio assigns dynamically to $PORT.
+        frontend = {
+          command = ["npm", "start", "--prefix", "frontend", "--", "--port", "$PORT"];
           manager = "web";
         };
+        # This defines the preview for the Firebase Emulator Suite UI.
+        # The command starts the emulators, and the UI is typically available on port 4000.
+        # Firebase Studio will provide a URL to access this.
+        "emulator-ui" = {
+          command = ["firebase", "emulators:start"];
+        };
       };
-    };
-    # Workspace lifecycle hooks
-    workspace = {
-      # Runs when a workspace is first created
-      onCreate = {
-        # Example: install JS dependencies from NPM
-        npm-install = "npm install";
-        # Open editors for the following files by default, if they exist:
-        default.openFiles = [ ".idx/dev.nix" "README.md" ];
-      };
-      # Runs when the workspace is (re)started
-      onStart = {};
     };
   };
 }

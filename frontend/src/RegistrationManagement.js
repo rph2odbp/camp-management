@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from './firebase-config';
-import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, remoteConfig } from './firebase-config'; // Import remoteConfig
+import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { fetchAndActivate, getString } from 'firebase/remote-config';
 
 // Placeholder for a service that would handle sending emails
 const EmailService = {
@@ -21,10 +22,38 @@ function RegistrationManagement({ onSelectCamper }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [filter, setFilter] = useState('all');
+    const [registrationStatuses, setRegistrationStatuses] = useState([]); // State for statuses
+
+    // Fetch statuses from Remote Config
+    useEffect(() => {
+        fetchAndActivate(remoteConfig)
+          .then(() => {
+            const statusesString = getString(remoteConfig, 'registration_statuses');
+            try {
+              const statuses = JSON.parse(statusesString);
+              setRegistrationStatuses(statuses);
+            } catch (e) {
+              console.error("Failed to parse registration statuses from Remote Config", e);
+              // Fallback to default if parsing fails
+              setRegistrationStatuses(["all", "pending deposit", "active", "waitlisted", "complete"]);
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to fetch remote config', err);
+            // Fallback to default on error
+            setRegistrationStatuses(["all", "pending deposit", "active", "waitlisted", "complete"]);
+          });
+    }, []);
 
     useEffect(() => {
         setLoading(true);
-        const campersQuery = query(collection(db, 'campers'));
+        let campersQuery;
+        if (filter === 'all' || !filter) {
+            campersQuery = query(collection(db, 'campers'));
+        } else {
+            campersQuery = query(collection(db, 'campers'), where('registrationStatus', '==', filter));
+        }
+
         const unsubscribe = onSnapshot(campersQuery, (snapshot) => {
             const campersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setCampers(campersData);
@@ -34,7 +63,7 @@ function RegistrationManagement({ onSelectCamper }) {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [filter]);
     
     const recordTimelineEvent = async (camperId, event) => {
         try {
@@ -81,11 +110,6 @@ function RegistrationManagement({ onSelectCamper }) {
         }
     };
 
-    const filteredCampers = campers.filter(camper => {
-        if (filter === 'all') return true;
-        return camper.registrationStatus === filter;
-    });
-
     if (loading) return <p>Loading registrations...</p>;
     if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
@@ -95,11 +119,9 @@ function RegistrationManagement({ onSelectCamper }) {
             <div>
                 Filter by status:
                 <select onChange={(e) => setFilter(e.target.value)} value={filter}>
-                    <option value="all">All</option>
-                    <option value="pending deposit">Pending Deposit</option>
-                    <option value="active">Active</option>
-                    <option value="waitlisted">Waitlisted</option>
-                    <option value="complete">Complete</option>
+                    {registrationStatuses.map(status => (
+                        <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                    ))}
                 </select>
             </div>
             <table>
@@ -111,7 +133,7 @@ function RegistrationManagement({ onSelectCamper }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredCampers.map(camper => (
+                    {campers.map(camper => (
                         <tr key={camper.id}>
                             <td onClick={() => onSelectCamper(camper.id)} style={{cursor: 'pointer', textDecoration: 'underline'}}>{camper.name}</td>
                             <td>{camper.registrationStatus}</td>

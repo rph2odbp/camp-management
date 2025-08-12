@@ -1,8 +1,10 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getRemoteConfig } from "firebase/remote-config";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions"; // Import functions and its emulator connector
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -21,5 +23,33 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const functions = getFunctions(app); // Initialize functions
+const remoteConfig = getRemoteConfig(app);
 
-export { app, auth, db, storage };
+// Connect to emulators if in a local development environment
+if (window.location.hostname === "localhost") {
+  console.log("Connecting to local Firebase emulators...");
+  connectAuthEmulator(auth, "http://localhost:9099");
+  connectFirestoreEmulator(db, "localhost", 8080);
+  connectStorageEmulator(storage, "localhost", 9199);
+  connectFunctionsEmulator(functions, "localhost", 5001);
+}
+
+
+// Set default values for Remote Config
+remoteConfig.settings.minimumFetchIntervalMillis = 3600000; // 1 hour cache
+remoteConfig.defaultConfig = {
+  // Store statuses as a JSON string
+  "registration_statuses": JSON.stringify([
+    "all",
+    "pending deposit",
+    "active",
+    "waitlisted",
+    "complete"
+  ]),
+  // Feature flag for the hiring process
+  "hiring_feature_enabled": true
+};
+
+
+export { app, auth, db, storage, functions, remoteConfig };

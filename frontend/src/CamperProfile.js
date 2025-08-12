@@ -6,6 +6,7 @@ import RoommateRequestsTab from './RoommateRequestsTab';
 import AttachmentsTab from './AttachmentsTab';
 import TimelineTab from './TimelineTab';
 import AccountingTab from './AccountingTab';
+import EditCamperForm from './EditCamperForm'; // Import the new form component
 
 function CamperProfile({ camperId, onBack }) {
     const [camper, setCamper] = useState(null);
@@ -13,6 +14,7 @@ function CamperProfile({ camperId, onBack }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('personal');
+    const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
 
     useEffect(() => {
         setLoading(true);
@@ -72,36 +74,45 @@ function CamperProfile({ camperId, onBack }) {
 
             <div className="tab-content">
                 {activeTab === 'personal' && (
-                    <div>
-                        <fieldset>
-                            <legend>Personal Information</legend>
-                            {camper.photoURL && <img src={camper.photoURL} alt="Camper" style={{ maxWidth: '200px', maxHeight: '200px' }} />}
-                            <p><strong>Name:</strong> {camper.name}</p>
-                            <p><strong>Date of Birth:</strong> {camper.birthdate}</p>
-                            <p><strong>Gender:</strong> {camper.gender}</p>
-                            <p><strong>Grade:</strong> {camper.grade}</p>
-                            <p><strong>School:</strong> {camper.school}</p>
-                            <p><strong>T-Shirt Size:</strong> {camper.tShirtSize}</p>
-                            <p><strong>Years at Camp:</strong> {camper.yearsAtCamp}</p>
-                        </fieldset>
-                        <fieldset>
-                            <legend>Parent/Guardian Information</legend>
-                            <p><strong>Name:</strong> {camper.parentName}</p>
-                            <p><strong>Phone:</strong> {camper.parentPhone}</p>
-                        </fieldset>
-                        <fieldset>
-                            <legend>Session & Registration</legend>
-                            <p><strong>Registration Status:</strong> {camper.registrationStatus}</p>
-                            <h4>Enrolled Sessions:</h4>
-                            {enrolledSessions.length > 0 ? (
-                                <ul>
-                                    {enrolledSessions.map(session => (
-                                        <li key={session.id}>{session.name} ({session.startDate} to {session.endDate})</li>
-                                    ))}
-                                </ul>
-                            ) : <p>Not enrolled in any sessions.</p>}
-                        </fieldset>
-                    </div>
+                    isEditing ? (
+                        <EditCamperForm 
+                            camper={camper} 
+                            onSave={() => setIsEditing(false)} 
+                            onCancel={() => setIsEditing(false)} 
+                        />
+                    ) : (
+                        <div>
+                            <button onClick={() => setIsEditing(true)}>Edit Personal Info</button>
+                            <fieldset>
+                                <legend>Personal Information</legend>
+                                {camper.photoURL && <img src={camper.photoURL} alt="Camper" style={{ maxWidth: '200px', maxHeight: '200px' }} />}
+                                <p><strong>Name:</strong> {camper.name}</p>
+                                <p><strong>Date of Birth:</strong> {camper.birthdate}</p>
+                                <p><strong>Gender:</strong> {camper.gender}</p>
+                                <p><strong>Grade:</strong> {camper.grade}</p>
+                                <p><strong>School:</strong> {camper.school}</p>
+                                <p><strong>T-Shirt Size:</strong> {camper.tShirtSize}</p>
+                                <p><strong>Years at Camp:</strong> {camper.yearsAtCamp}</p>
+                            </fieldset>
+                            <fieldset>
+                                <legend>Parent/Guardian Information</legend>
+                                <p><strong>Name:</strong> {camper.parentName}</p>
+                                <p><strong>Phone:</strong> {camper.parentPhone}</p>
+                            </fieldset>
+                            <fieldset>
+                                <legend>Session & Registration</legend>
+                                <p><strong>Registration Status:</strong> {camper.registrationStatus}</p>
+                                <h4>Enrolled Sessions:</h4>
+                                {enrolledSessions.length > 0 ? (
+                                    <ul>
+                                        {enrolledSessions.map(session => (
+                                            <li key={session.id}>{session.name} ({session.startDate} to {session.endDate})</li>
+                                        ))}
+                                    </ul>
+                                ) : <p>Not enrolled in any sessions.</p>}
+                            </fieldset>
+                        </div>
+                    )
                 )}
                 {activeTab === 'medical' && <MedicalTab camper={camper} />}
                 {activeTab === 'roommate' && <RoommateRequestsTab camper={camper} />}
