@@ -10,28 +10,37 @@ import AdminPortal from './AdminPortal';
 import MedicalStaffPortal from './MedicalStaffPortal';
 import ApplicantPortal from './ApplicantPortal';
 import SessionList from './SessionList';
+import GlobalSearch from './GlobalSearch';
+import UserProfile from './UserProfile'; // The new unified profile view
 
 function App() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [viewingProfileId, setViewingProfileId] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
+      setLoadingUser(true);
       if (currentUser) {
-        try {
-          const userDocSnap = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userDocSnap.exists()) {
-            setUserData(userDocSnap.data());
-          } else {
-            setUserData(null);
+        setUser(currentUser);
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            await currentUser.getIdToken(true);
+            const userDocSnap = await getDoc(doc(db, 'users', currentUser.uid));
+            if (userDocSnap.exists()) {
+              setUserData(userDocSnap.data());
+              break;
+            }
+          } catch (error) {
+            console.error("Error fetching user data:", error);
           }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          setUserData(null);
+          retries--;
+          await new Promise(res => setTimeout(res, 1000));
         }
       } else {
+        setUser(null);
         setUserData(null);
       }
       setLoadingUser(false);
@@ -41,11 +50,21 @@ function App() {
 
   const handleLogout = async () => {
     await signOut(auth);
+    setViewingProfileId(null); // Clear profile view on logout
+  };
+
+  const handleSelectProfile = (userId) => {
+    setViewingProfileId(userId);
   };
 
   const renderContent = () => {
     if (loadingUser) {
       return <p>Loading...</p>;
+    }
+
+    // If we are viewing a specific profile, render that component
+    if (viewingProfileId) {
+      return <UserProfile userId={viewingProfileId} onBack={() => setViewingProfileId(null)} />;
     }
 
     if (user && userData) {
@@ -59,7 +78,6 @@ function App() {
       return <p>Your account is being processed. Please check your user role.</p>;
     }
 
-    // Default view for logged-out users
     return (
       <div>
         <Auth />
@@ -73,12 +91,15 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Camp Abbey Summer Camp</h1>
-        {user && (
-          <div>
-            <span>Welcome, {user.displayName || user.email}</span>
-            <button onClick={handleLogout} style={{ marginLeft: '10px' }}>Logout</button>
-          </div>
-        )}
+        <div className="header-right">
+          {userData?.role === 'admin' && <GlobalSearch onSelectResult={handleSelectProfile} />}
+          {user && (
+            <div className="user-info">
+              <span>Welcome, {user.displayName || user.email}</span>
+              <button onClick={handleLogout} style={{ marginLeft: '10px' }}>Logout</button>
+            </div>
+          )}
+        </div>
       </header>
       <main>
         {renderContent()}

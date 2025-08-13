@@ -8,7 +8,6 @@
     # firebase-tools is now installed via npm in the onCreate hook below
     pkgs.jdk17
     pkgs.nodejs_20
-    # pkgs.google-cloud-sdk
   ];
 
   # All `idx` configurations should be nested under a single `idx` attribute.
@@ -18,13 +17,6 @@
     extensions = [
       "dbaeumer.vscode-eslint"
       "esbenp.prettier-vscode"
-      "vscode.emmet"
-      "ms-azuretools.vscode-docker"
-      "github.copilot"
-      "ms-vscode.vscode-typescript-next"
-      "apollographql.vscode-apollo"
-      "figma.figma-for-vs-code"
-      "wallabyjs.wallaby-vscode"
     ];
 
     # Workspace lifecycle hooks
@@ -34,13 +26,12 @@
         # Install firebase-tools globally via npm to avoid Nix build issues
         install-firebase-and-npm-packages = "npm install -g firebase-tools && npm install && npm install --prefix backend && npm install --prefix frontend";
       };
-      # onStart is removed to prevent conflicts with the Firebase emulator
+      # onStart is empty to prevent conflicts with the Firebase emulator
       # You should start the emulators manually with `firebase emulators:start`
       onStart = {};
     };
 
     # Configure web previews for the Firebase Emulator Suite
-    # See https://firebase.google.com/docs/emulator-suite/install_and_configure#configure_emulator_suite
     previews = {
       enable = true;
       previews = {
@@ -62,8 +53,5 @@
   };
 
   # Environment variables
-  env = {
-    # Example:
-    # PREVIEW_URL = idx.previews.web.url;
-  };
+  env = {};
 }

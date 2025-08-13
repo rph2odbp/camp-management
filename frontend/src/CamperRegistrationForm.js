@@ -1,21 +1,45 @@
-// frontend/src/CamperRegistrationForm.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import BasicInfoPage from './BasicInfoPage';
 import MedicalSafetyPage from './MedicalSafetyPage';
 import PaymentPage from './PaymentPage';
 import { db, auth } from './firebase-config';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 
-// Accept isWaitlisted as a prop now
 function CamperRegistrationForm({ sessionId, isWaitlisted, onRegistrationComplete }) {
     const [step, setStep] = useState(1);
-    const [formData, setFormData] = useState({ /* ... */ });
+    const [formData, setFormData] = useState({
+        // Basic Info
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        gender: '',
+        // Medical & Safety
+        emergencyContactName: '',
+        emergencyContactPhone: '',
+        allergies: '',
+        medications: '',
+        // Payment Info (though we might handle this differently)
+        paymentMethod: '', 
+    });
 
-    // The problematic useEffect has been removed.
-    
+    const nextStep = () => setStep(prev => prev + 1);
+    const prevStep = () => setStep(prev => prev - 1);
+
+    const handleChange = input => e => {
+        setFormData({ ...formData, [input]: e.target.value });
+    };
+
     const handleSubmit = async () => {
         const user = auth.currentUser;
-        if (!user) { /* ... */ return; }
+        if (!user) {
+            alert("You must be logged in to register a camper.");
+            return;
+        }
+
+        if (!sessionId) {
+            alert("No session selected. Please go back and select a session.");
+            return;
+        }
 
         try {
             await addDoc(collection(db, 'campers'), {
@@ -29,14 +53,44 @@ function CamperRegistrationForm({ sessionId, isWaitlisted, onRegistrationComplet
                 createdAt: new Date(),
             });
             alert(`Registration successful! ${isWaitlisted ? 'You have been added to the waitlist.' : ''}`);
-            onRegistrationComplete();
+            if (onRegistrationComplete) {
+                onRegistrationComplete();
+            }
         } catch (error) {
             console.error("Error creating registration: ", error);
-            alert("Failed to create registration.");
+            alert("Failed to create registration. See console for details.");
         }
     };
-    
-    // ... (rest of the component remains the same)
+
+    switch (step) {
+        case 1:
+            return (
+                <BasicInfoPage
+                    nextStep={nextStep}
+                    handleChange={handleChange}
+                    values={formData}
+                />
+            );
+        case 2:
+            return (
+                <MedicalSafetyPage
+                    nextStep={nextStep}
+                    prevStep={prevStep}
+                    handleChange={handleChange}
+                    values={formData}
+                />
+            );
+        case 3:
+            return (
+                <PaymentPage
+                    prevStep={prevStep}
+                    handleSubmit={handleSubmit}
+                    isWaitlisted={isWaitlisted}
+                />
+            );
+        default:
+            return <div>Registration process finished or error.</div>;
+    }
 }
 
 export default CamperRegistrationForm;

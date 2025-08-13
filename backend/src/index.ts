@@ -1,25 +1,12 @@
-import { initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
-import { HttpsError, onCall, CallableRequest } from "firebase-functions/v2/https";
+// backend/src/index.ts
+import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import { db, auth } from "./firebase-admin";
 import { handleChat } from "./kchat";
 import { generateReport } from "./reporting";
-import { seedDatabase } from "./seeding";
-import * as express from 'express';
-import * as cors from 'cors';
-
-initializeApp();
-const firestore = getFirestore("kateri-db");
-
-const app = express();
-
-const corsOptions = {
-  origin: true,
-  methods: ['GET', 'POST']
-};
-
-app.use(cors(corsOptions));
+import { seedDatabase as seedDatabaseLogic } from "./seeding";
+import { setUserRole as setUserRoleLogic } from "./user-management";
+import { searchUsers as searchUsersLogic } from "./search"; // Import the new function
 
 interface RegisterRequestData {
   email: string;
@@ -32,9 +19,9 @@ export const registerAsParent = onCall({ cors: true }, async (request: CallableR
     throw new HttpsError("invalid-argument", "Email and password are required.");
   }
   try {
-    const userRecord = await getAuth().createUser({ email, password });
-    await getAuth().setCustomUserClaims(userRecord.uid, { role: "parent" });
-    await firestore.collection("users").doc(userRecord.uid).set({
+    const userRecord = await auth.createUser({ email, password });
+    await auth.setCustomUserClaims(userRecord.uid, { role: "parent" });
+    await db.collection("users").doc(userRecord.uid).set({
       uid: userRecord.uid,
       email: email,
       role: "parent",
@@ -53,9 +40,9 @@ export const registerAsStaff = onCall({ cors: true }, async (request: CallableRe
     throw new HttpsError("invalid-argument", "Email and password are required.");
   }
   try {
-    const userRecord = await getAuth().createUser({ email, password });
-    await getAuth().setCustomUserClaims(userRecord.uid, { role: "staff" });
-    await firestore.collection("users").doc(userRecord.uid).set({
+    const userRecord = await auth.createUser({ email, password });
+    await auth.setCustomUserClaims(userRecord.uid, { role: "staff" });
+    await db.collection("users").doc(userRecord.uid).set({
       uid: userRecord.uid,
       email: email,
       role: "staff",
@@ -70,7 +57,8 @@ export const registerAsStaff = onCall({ cors: true }, async (request: CallableRe
   }
 });
 
-// --- Other Callable Functions ---
-export const seedDatabase = onCall({ cors: true }, seedDatabase);
+export const seedDatabase = onCall({ cors: true }, seedDatabaseLogic);
 export const kchat = onCall({ cors: true }, handleChat);
 export const getReportData = onCall({ cors: true }, generateReport);
+export const setUserRole = onCall({ cors: true }, setUserRoleLogic);
+export const searchUsers = onCall({ cors: true }, searchUsersLogic);

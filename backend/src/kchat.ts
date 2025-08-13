@@ -1,19 +1,15 @@
-import { getFirestore } from "firebase-admin/firestore";
-import { HttpsError, onCall } from "firebase-functions/v2/https";
-import * as functions from 'firebase-functions';
-import * as logger from "firebase-functions/logger";
+// backend/src/kchat.ts
+import { HttpsError } from "firebase-functions/v2/https";
+import * as functions from "firebase-functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize the Generative AI model
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-const model = genAI.getGenerativeModel({model: "gemini-pro"});
-
-// --- Tool Definitions ---
-const tools = {};
+const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 // --- Main Chat Handler ---
 export const handleChat = async (request: functions.https.CallableRequest) => {
-  if (!request.auth || !request.auth.token.admin) {
+  if (request.auth?.token.role !== "admin") {
     throw new HttpsError("permission-denied",
       "You must be an admin to use this feature.");
   }
@@ -28,5 +24,5 @@ export const handleChat = async (request: functions.https.CallableRequest) => {
   const response = await result.response;
   const text = response.text();
 
-  return {response: text};
+  return { response: text };
 };

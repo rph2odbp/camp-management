@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import UserManagement from './UserManagement';
 import AdminSessionPanel from './AdminSessionPanel';
 import Reporting from './Reporting';
@@ -8,63 +7,76 @@ import ApplicationManagement from './ApplicationManagement';
 import CabinManagement from './CabinManagement';
 import KChat from './KChat';
 import WaitlistManagement from './WaitlistManagement';
-
-const seedDatabaseCallable = httpsCallable(getFunctions(), 'seedDatabase');
+import AllCampersList from './AllCampersList';
 
 function AdminPortal() {
-  const [activeTab, setActiveTab] = useState('users');
-  const [seedMessage, setSeedMessage] = useState('');
+  const [activeCategory, setActiveCategory] = useState('Manage');
+  const [activeItem, setActiveItem] = useState('Applications');
 
-  const handleSeedDatabase = async () => {
-    if (!window.confirm("Are you sure you want to seed the database? This will add new data and may create duplicates.")) {
-        return;
-    }
-    try {
-        const result = await seedDatabaseCallable();
-        // Corrected JavaScript syntax below
-        setSeedMessage(result.data.message);
-    } catch (error) {
-        setSeedMessage("Error seeding database: " + error.message);
-    }
+  const handleCategoryClick = (category) => {
+    setActiveCategory(category);
+    // Set a default active item when the category changes
+    if (category === 'Manage') setActiveItem('Applications');
+    if (category === 'Config') setActiveItem('Assign Roles');
+    if (category === 'Reports') setActiveItem('Reporting');
   };
 
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case 'users': return <UserManagement />;
-      case 'sessions': return <AdminSessionPanel />;
-      case 'cabins': return <CabinManagement />;
-      case 'waitlist': return <WaitlistManagement />;
-      case 'applications': return <ApplicationManagement />;
-      case 'messaging': return <MessagePackageManagement />;
-      case 'kchat': return <KChat />;
-      case 'reporting': return <Reporting />;
-      default: return <UserManagement />;
+  const renderContent = () => {
+    const mapping = {
+      'Applications': <ApplicationManagement />,
+      'Waitlist': <WaitlistManagement />,
+      'Assign Cabins': <CabinManagement />,
+      'Campers': <AllCampersList />,
+      'Assign Roles': <UserManagement />,
+      'Sessions': <AdminSessionPanel />,
+      'Messaging': <MessagePackageManagement />,
+      'KChat': <KChat />,
+      'Reporting': <Reporting />,
+    };
+    return mapping[activeItem] || null; // Return null instead of a message
+  };
+
+  const getSubMenuItems = (category) => {
+    switch (category) {
+      case 'Manage':
+        return ['Applications', 'Waitlist', 'Assign Cabins', 'Campers'];
+      case 'Config':
+        return ['Assign Roles', 'Sessions', 'Messaging', 'KChat'];
+      case 'Reports':
+        return ['Reporting'];
+      default:
+        return [];
     }
   };
 
   return (
-    <div>
-      <h2>Admin Portal</h2>
-      <nav>
-        <button onClick={() => setActiveTab('users')}>User Management</button>
-        <button onClick={() => setActiveTab('sessions')}>Session Management</button>
-        <button onClick={() => setActiveTab('cabins')}>Cabin Management</button>
-        <button onClick={() => setActiveTab('waitlist')}>Waitlist</button>
-        <button onClick={() => setActiveTab('applications')}>Applications</button>
-        <button onClick={() => setActiveTab('messaging')}>Messaging Packages</button>
-        <button onClick={() => setActiveTab('kchat')}>KChat</button>
-        <button onClick={() => setActiveTab('reporting')}>Reporting</button>
-      </nav>
-      <hr />
-      
-      <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
-          <h4>Database Seeding</h4>
-          <p>Click the button below to populate the database with initial data like sessions and message packages.</p>
-          <button onClick={handleSeedDatabase}>Seed Database</button>
-          {seedMessage && <p>{seedMessage}</p>}
+    <div className="admin-portal-layout">
+      {/* Column 1: Main Categories (Always Visible) */}
+      <div className="admin-sidebar">
+        <div className={`sidebar-category ${activeCategory === 'Manage' ? 'active' : ''}`} onClick={() => handleCategoryClick('Manage')}><h3>Manage</h3></div>
+        <div className={`sidebar-category ${activeCategory === 'Config' ? 'active' : ''}`} onClick={() => handleCategoryClick('Config')}><h3>Config</h3></div>
+        <div className={`sidebar-category ${activeCategory === 'Reports' ? 'active' : ''}`} onClick={() => handleCategoryClick('Reports')}><h3>Reports</h3></div>
       </div>
       
-      {renderActiveTab()}
+      {/* Column 2: Sub-Menu (Visible if a category is selected) */}
+      {activeCategory && (
+        <div className="admin-submenu">
+          {getSubMenuItems(activeCategory).map((item) => (
+            <div
+              key={item}
+              className={`submenu-item ${activeItem === item ? 'active' : ''}`}
+              onClick={() => setActiveItem(item)}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Column 3: Main Content */}
+      <div className="admin-content">
+        {renderContent()}
+      </div>
     </div>
   );
 }

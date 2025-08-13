@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib",
+    "module": "commonjs",
+    "target": "es2017"
+  },
+  "include": [
+    "src/make-admin.ts"
+  ],
+  "exclude": [
+    "src/index.ts",
+    "src/kchat.ts",
+    "src/reporting.ts",
+    "src/seeding.ts",
+    "src/user-management.ts"
+  ]
+}

@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from './firebase-config';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'firebase/auth';
 
 const registerAsParent = httpsCallable(getFunctions(), 'registerAsParent');
 const registerAsStaff = httpsCallable(getFunctions(), 'registerAsStaff');
 
 function Auth() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [parentEmail, setParentEmail] = useState('');
+  const [parentPassword, setParentPassword] = useState('');
+  const [staffEmail, setStaffEmail] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
   const [user, setUser] = useState(null);
   const [error, setError] = useState('');
 
- useEffect(() => {
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
@@ -50,7 +52,7 @@ function Auth() {
     }
   };
 
-   const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async () => {
     setError('');
     try {
       const provider = new GoogleAuthProvider();
@@ -69,19 +71,19 @@ function Auth() {
           <input
             type="email"
             placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={parentEmail}
+            onChange={(e) => setParentEmail(e.target.value)}
           />
           <input
             type="password"
             placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={parentPassword}
+            onChange={(e) => setParentPassword(e.target.value)}
           />
-          <button onClick={() => handleLogin(email, password)}>Login</button>
+          <button onClick={() => handleLogin(parentEmail, parentPassword)}>Login</button>
           <button onClick={() => handleRegister('parent')}>Register User</button>
           <p className="login-descriptor">Log in or register to manage campers</p>
-          <button onClick={handleGoogleSignIn} style={{backgroundColor: '#4285F4'}}>
+          <button onClick={handleGoogleSignIn} style={{ backgroundColor: '#4285F4' }}>
             Sign in with Google
           </button>
         </div>
@@ -92,16 +94,16 @@ function Auth() {
           <input
             type="email"
             placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={staffEmail}
+            onChange={(e) => setStaffEmail(e.target.value)}
           />
           <input
             type="password"
             placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={staffPassword}
+            onChange={(e) => setStaffPassword(e.target.value)}
           />
-          <button onClick={() => handleLogin(email, password)}>Login</button>
+          <button onClick={() => handleLogin(staffEmail, staffPassword)}>Login</button>
           <button onClick={() => handleRegister('staff')}>Register to Apply</button>
           <p className="login-descriptor">Log in or register to apply for a job</p>
         </div>
