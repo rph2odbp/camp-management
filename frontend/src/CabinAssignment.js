@@ -1,107 +1,132 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
-import { collection, getDocs, doc, updateDoc, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
+import './CabinAssignment.css';
 
 function CabinAssignment() {
-    const [sessions, setSessions] = useState([]);
-    const [allCampers, setAllCampers] = useState([]);
     const [cabins, setCabins] = useState([]);
+    const [campers, setCampers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [selectedSessionId, setSelectedSessionId] = useState('');
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        const fetchInitialData = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
-                const [sessionsSnapshot, cabinsSnapshot] = await Promise.all([
-                    getDocs(collection(db, 'sessions')),
-                    getDocs(collection(db, 'cabins'))
-                ]);
-                setSessions(sessionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                setCabins(cabinsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const cabinsSnapshot = await getDocs(collection(db, 'cabins'));
+                const cabinsData = cabinsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), campers: [] }));
+                
+                const campersSnapshot = await getDocs(collection(db, 'campers'));
+                const campersData = campersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Pre-assign campers to their cabins based on camper.cabinId
+                const campersMap = new Map(campersData.map(c => [c.id, c]));
+                cabinsData.forEach(cabin => {
+                    const assignedCampers = campersData.filter(c => c.cabinId === cabin.id);
+                    cabin.campers = assignedCampers;
+                });
+                
+                setCabins(cabinsData);
+                setCampers(campersData);
+
             } catch (err) {
-                setError('Failed to fetch initial data.');
+                console.error("Error fetching data:", err);
+                setError('Failed to load cabin and camper data.');
             }
             setLoading(false);
         };
-
-        fetchInitialData();
-        
-        // Set up a listener for all campers
-        const unsubscribeCampers = onSnapshot(collection(db, 'campers'), (snapshot) => {
-            setAllCampers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-
-        return () => unsubscribeCampers();
+        fetchData();
     }, []);
 
-    const handleAssignCabin = async (camperId, newCabinId) => {
-        const camperRef = doc(db, 'campers', camperId);
-        const cabinAssignment = {
-            ...((await getDocs(query(collection(db, 'campers'), where('__name__', '==', camperId)))).docs[0].data().cabinAssignments || {}),
-            [selectedSessionId]: newCabinId
-        };
+    const handleDragStart = (e, camperId) => {
+        e.dataTransfer.setData("camperId", camperId);
+    };
+
+    const handleDrop = (e, targetCabinId) => {
+        e.preventDefault();
+        const camperId = e.dataTransfer.getData("camperId");
         
+        setCampers(prevCampers => {
+            const camperIndex = prevCampers.findIndex(c => c.id === camperId);
+            if (camperIndex === -1) return prevCampers;
+
+            const updatedCampers = [...prevCampers];
+            updatedCampers[camperIndex].cabinId = targetCabinId;
+            return updatedCampers;
+        });
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+    };
+
+    const handleSaveAssignments = async () => {
+        setSaving(true);
+        setError('');
+        
+        const batch = writeBatch(db);
+        campers.forEach(camper => {
+            const camperRef = doc(db, 'campers', camper.id);
+            batch.update(camperRef, { cabinId: camper.cabinId || null });
+        });
+
         try {
-            await updateDoc(camperRef, { cabinAssignments: cabinAssignment });
+            await batch.commit();
+            alert('Cabin assignments saved successfully!');
         } catch (err) {
-            setError('Failed to assign cabin.');
+            console.error("Error saving assignments:", err);
+            setError('Failed to save assignments.');
+        } finally {
+            setSaving(false);
         }
     };
+
+    if (loading) return <p>Loading cabin assignments...</p>;
+
+    const unassignedCampers = campers.filter(c => !c.cabinId);
     
-    if (loading) return <p>Loading...</p>;
-    if (error) return <p style={{ color: 'red' }}>{error}</p>;
-
-    const campersInSession = selectedSessionId
-        ? allCampers.filter(c => c.enrolledSessionIds?.includes(selectedSessionId))
-        : [];
-
-    const getCabinOccupancy = (cabinId) => {
-        return allCampers.filter(c => c.cabinAssignments && c.cabinAssignments[selectedSessionId] === cabinId).length;
-    };
+    // Recalculate cabin occupants based on the current state of campers
+    const updatedCabins = cabins.map(cabin => ({
+        ...cabin,
+        campers: campers.filter(c => c.cabinId === cabin.id)
+    }));
 
     return (
-        <div>
-            <h2>Cabin Assignments</h2>
-            <select onChange={(e) => setSelectedSessionId(e.target.value)} value={selectedSessionId}>
-                <option value="">Select a Session</option>
-                {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-
-            {selectedSessionId && (
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Camper Name</th>
-                            <th>Current Cabin</th>
-                            <th>Assign to Cabin</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {campersInSession.map(camper => (
-                            <tr key={camper.id}>
-                                <td>{camper.name}</td>
-                                <td>{cabins.find(c => c.id === camper.cabinAssignments?.[selectedSessionId])?.name || 'Unassigned'}</td>
-                                <td>
-                                    <select onChange={(e) => handleAssignCabin(camper.id, e.target.value)} value={camper.cabinAssignments?.[selectedSessionId] || ''}>
-                                        <option value="">Unassign</option>
-                                        {cabins.map(c => {
-                                            const occupancy = getCabinOccupancy(c.id);
-                                            const isFull = occupancy >= c.capacity;
-                                            return (
-                                                <option key={c.id} value={c.id} disabled={isFull}>
-                                                    {c.name} ({occupancy}/{c.capacity}) {isFull ? '- Full' : ''}
-                                                </option>
-                                            );
-                                        })}
-                                    </select>
-                                </td>
-                            </tr>
+        <div className="cabin-assignment-container">
+            {error && <p className="error-message">{error}</p>}
+            <button onClick={handleSaveAssignments} disabled={saving} className="save-button">
+                {saving ? 'Saving...' : 'Save All Assignments'}
+            </button>
+            <div className="assignment-area">
+                <div className="unassigned-panel" onDrop={(e) => handleDrop(e, null)} onDragOver={handleDragOver}>
+                    <h3>Unassigned Campers ({unassignedCampers.length})</h3>
+                    <div className="camper-list">
+                        {unassignedCampers.map(camper => (
+                            <div key={camper.id} draggable onDragStart={(e) => handleDragStart(e, camper.id)} className="camper-card">
+                                {camper.name}
+                            </div>
                         ))}
-                    </tbody>
-                </table>
-            )}
+                    </div>
+                </div>
+                <div className="cabins-panel">
+                    <h3>Cabins</h3>
+                    <div className="cabin-list">
+                        {updatedCabins.map(cabin => (
+                            <div key={cabin.id} className="cabin-card" onDrop={(e) => handleDrop(e, cabin.id)} onDragOver={handleDragOver}>
+                                <h4>{cabin.name} ({cabin.campers.length}/{cabin.capacity})</h4>
+                                <div className="camper-drop-area">
+                                    {cabin.campers.map(camper => (
+                                         <div key={camper.id} draggable onDragStart={(e) => handleDragStart(e, camper.id)} className="camper-card assigned">
+                                            {camper.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

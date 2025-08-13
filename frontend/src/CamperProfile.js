@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
-import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import MedicalTab from './MedicalTab';
 import RoommateRequestsTab from './RoommateRequestsTab';
 import AttachmentsTab from './AttachmentsTab';
@@ -9,6 +9,8 @@ import AccountingTab from './AccountingTab';
 
 function CamperProfile({ camperId, onBack }) {
     const [camper, setCamper] = useState(null);
+    const [editableCamper, setEditableCamper] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
     const [enrolledSessions, setEnrolledSessions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -21,8 +23,14 @@ function CamperProfile({ camperId, onBack }) {
             if (docSnap.exists()) {
                 const camperData = { id: docSnap.id, ...docSnap.data() };
                 setCamper(camperData);
-                if (camperData.enrolledSessionIds && camperData.enrolledSessionIds.length > 0) {
-                    fetchEnrolledSessions(camperData.enrolledSessionIds);
+                setEditableCamper(camperData); // Initialize editable state
+                if (camperData.sessionRegistrations && camperData.sessionRegistrations.length > 0) {
+                    const sessionIds = camperData.sessionRegistrations.filter(reg => reg.status === 'enrolled').map(reg => reg.sessionId);
+                    if(sessionIds.length > 0) {
+                        fetchEnrolledSessions(sessionIds);
+                    } else {
+                        setLoading(false);
+                    }
                 } else {
                     setLoading(false);
                 }
@@ -51,6 +59,33 @@ function CamperProfile({ camperId, onBack }) {
             setLoading(false);
         }
     };
+    
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setEditableCamper(prevState => ({ ...prevState, [name]: value }));
+    };
+
+    const handleSave = async () => {
+        const camperRef = doc(db, 'campers', camperId);
+        try {
+            await updateDoc(camperRef, {
+                // Only update fields that are editable
+                name: editableCamper.name,
+                dateOfBirth: editableCamper.dateOfBirth
+            });
+            setIsEditing(false);
+            setError(''); // Clear any previous errors
+        } catch (err) {
+            console.error("Error updating camper:", err);
+            setError('Failed to save changes.');
+        }
+    };
+
+    const handleCancel = () => {
+        setEditableCamper(camper); // Reset changes
+        setIsEditing(false);
+        setError('');
+    };
 
     if (loading) return <p>Loading camper profile...</p>;
     if (error) return <p style={{ color: 'red' }}>{error}</p>;
@@ -75,8 +110,20 @@ function CamperProfile({ camperId, onBack }) {
                     <div>
                         <fieldset>
                             <legend>Personal Information</legend>
-                            <p><strong>Name:</strong> {camper.name}</p>
-                            <p><strong>Date of Birth:</strong> {camper.dateOfBirth}</p>
+                            {isEditing ? (
+                                <>
+                                    <p><strong>Name:</strong> <input type="text" name="name" value={editableCamper.name} onChange={handleInputChange} /></p>
+                                    <p><strong>Date of Birth:</strong> <input type="date" name="dateOfBirth" value={editableCamper.dateOfBirth} onChange={handleInputChange} /></p>
+                                    <button onClick={handleSave}>Save</button>
+                                    <button onClick={handleCancel}>Cancel</button>
+                                </>
+                            ) : (
+                                <>
+                                    <p><strong>Name:</strong> {camper.name}</p>
+                                    <p><strong>Date of Birth:</strong> {camper.dateOfBirth}</p>
+                                    <button onClick={() => setIsEditing(true)}>Edit</button>
+                                </>
+                            )}
                          </fieldset>
                         <fieldset>
                             <legend>Session & Registration</legend>

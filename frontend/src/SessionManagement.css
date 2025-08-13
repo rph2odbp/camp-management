@@ -1,0 +1,51 @@
+.session-management-container {
+    padding: 20px;
+}
+
+.session-form {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.session-form input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.session-form button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+}
+
+.session-form button[type="button"] {
+    background-color: #6c757d;
+}
+
+.session-list {
+    margin-top: 20px;
+}
+
+.session-item {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.session-actions button {
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.error-message {
+    color: red;
+    margin-bottom: 15px;
+}

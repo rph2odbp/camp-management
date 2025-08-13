@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 
 function AllCampersList({ onSelectCamper }) {
     const [campers, setCampers] = useState([]);
@@ -8,18 +8,18 @@ function AllCampersList({ onSelectCamper }) {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        setLoading(true);
-        const campersQuery = query(collection(db, 'campers'));
-        const unsubscribe = onSnapshot(campersQuery, (snapshot) => {
-            const campersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setCampers(campersData);
-            setLoading(false);
-        }, (err) => {
-            setError('Failed to fetch campers.');
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
+        const fetchCampers = async () => {
+            try {
+                const campersSnapshot = await getDocs(collection(db, 'campers'));
+                const campersData = campersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setCampers(campersData);
+            } catch (err) {
+                setError('Failed to fetch campers.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCampers();
     }, []);
 
     if (loading) return <p>Loading all campers...</p>;
@@ -27,14 +27,27 @@ function AllCampersList({ onSelectCamper }) {
 
     return (
         <div>
-            <h3>All Campers</h3>
-            <ul>
-                {campers.map((camper) => (
-                    <li key={camper.id} onClick={() => onSelectCamper(camper.id)}>
-                        {camper.name} - <strong>Status:</strong> {camper.registrationStatus}
-                    </li>
-                ))}
-            </ul>
+            <h3>All Registered Campers</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Date of Birth</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {campers.map(camper => (
+                        <tr key={camper.id}>
+                            <td>{camper.name}</td>
+                            <td>{camper.dateOfBirth}</td>
+                            <td>
+                                <button onClick={() => onSelectCamper(camper.id)}>View Profile</button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }

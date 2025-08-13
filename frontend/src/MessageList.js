@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db, auth } from './firebase-config';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import './MessageList.css'; // Import the CSS file
 
 function MessageList() {
     const [messages, setMessages] = useState([]);
@@ -53,7 +54,6 @@ function MessageList() {
         const unsubscribeMessages = onSnapshot(messagesQuery, async (snapshot) => {
             const messagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             
-            // Fetch camper data for each message
             const camperIds = new Set(messagesData.map(msg => msg.camperId));
             const newCampersData = { ...campersData };
             for (const camperId of camperIds) {
@@ -81,19 +81,21 @@ function MessageList() {
     if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
     return (
-        <div>
+        <div className="message-list-container">
             <h2>Sent Messages</h2>
             {messages.length === 0 ? (
                 <p>No messages have been sent yet.</p>
             ) : (
-                <ul>
+                <ul className="message-list">
                     {messages.map(message => {
                         const camperName = campersData[message.camperId]?.name || 'a camper';
                         return (
-                            <li key={message.id}>
-                                <p>To: <strong>{camperName}</strong></p>
-                                <p>{message.content}</p>
-                                <small>Sent: {message.sentAt?.toDate().toLocaleString()}</small>
+                            <li key={message.id} className="message-item">
+                                <div className="message-header">
+                                    <span className="message-to">To: <strong>{camperName}</strong></span>
+                                    <span className="message-date">{message.sentAt?.toDate().toLocaleString()}</span>
+                                </div>
+                                <p className="message-content">{message.content}</p>
                             </li>
                         );
                     })}

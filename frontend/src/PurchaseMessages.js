@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { createHelcimSession } from './services/PaymentService'; // Import the new service
+import { createHelcimSession } from './services/PaymentService';
+import './PurchaseMessages.css'; // Import the CSS file
 
 function PurchaseMessages() {
     const [packages, setPackages] = useState([]);
@@ -29,12 +30,8 @@ function PurchaseMessages() {
         setError('');
         
         try {
-            // 1. Create a Helcim session on the backend.
             const { paymentUrl } = await createHelcimSession(pkg);
-
-            // 2. Redirect the user to the Helcim hosted payment page.
             window.location.href = paymentUrl;
-
         } catch (err) {
             setError(`Error: ${err.message}`);
         } finally {
@@ -43,20 +40,27 @@ function PurchaseMessages() {
     };
 
     if (loading) return <p>Loading packages...</p>;
-    if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
     return (
-        <div>
+        <div className="purchase-messages-container">
             <h2>Purchase Message Credits</h2>
-            {packages.map(pkg => (
-                <div key={pkg.id} style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}>
-                    <h3>{pkg.name}</h3>
-                    <p>${pkg.price} for {pkg.credits} messages</p>
-                    <button onClick={() => handlePurchase(pkg)} disabled={isPurchasing === pkg.id}>
-                        {isPurchasing === pkg.id ? 'Processing...' : 'Purchase'}
-                    </button>
-                </div>
-            ))}
+            {error && <p className="error-message">{error}</p>}
+            <div className="packages-list">
+                {packages.map(pkg => (
+                    <div key={pkg.id} className="package-item">
+                        <h3>{pkg.name}</h3>
+                        <p className="package-price">${pkg.price}</p>
+                        <p className="package-credits">{pkg.credits} messages</p>
+                        <button 
+                            className="purchase-button"
+                            onClick={() => handlePurchase(pkg)} 
+                            disabled={isPurchasing === pkg.id}
+                        >
+                            {isPurchasing === pkg.id ? 'Processing...' : 'Purchase'}
+                        </button>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

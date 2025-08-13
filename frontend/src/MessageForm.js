@@ -3,6 +3,8 @@ import { db, auth } from './firebase-config';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, orderBy, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
+const MAX_MESSAGE_LENGTH = 280; // Example character limit
+
 function MessageForm() {
     const [messageContent, setMessageContent] = useState('');
     const [myCampers, setMyCampers] = useState([]);
@@ -52,6 +54,15 @@ function MessageForm() {
 
     }, [currentUser]);
 
+    useEffect(() => {
+        if (success) {
+            const timer = setTimeout(() => {
+                setSuccess('');
+            }, 3000); // Clear success message after 3 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [success]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (messageCredits <= 0) {
@@ -68,7 +79,6 @@ function MessageForm() {
         setSuccess('');
 
         try {
-            // Find the oldest credit document to "use"
             const creditsQuery = query(collection(db, 'users', currentUser.uid, 'message_credits'), orderBy('purchasedAt'), limit(1));
             const creditSnapshot = await getDocs(creditsQuery);
             if (creditSnapshot.empty) {
@@ -78,7 +88,6 @@ function MessageForm() {
             }
             const creditDocToDelete = creditSnapshot.docs[0];
 
-            // Send the message and delete the credit doc in a batch write for atomicity
             await addDoc(collection(db, 'messages'), {
                 senderId: currentUser.uid,
                 camperId: selectedCamper,
@@ -88,8 +97,6 @@ function MessageForm() {
                 sentAt: serverTimestamp(),
             });
             
-            // For simplicity, we assume one message uses one credit document.
-            // A more complex system might update a single credit document.
             await deleteDoc(creditDocToDelete.ref);
 
             setSuccess('Message sent successfully!');
@@ -106,6 +113,8 @@ function MessageForm() {
         return <p>Please log in to send messages to your campers.</p>;
     }
 
+    const charsRemaining = MAX_MESSAGE_LENGTH - messageContent.length;
+
     return (
         <div>
             <h2>Send a Message to Your Camper</h2>
@@ -121,8 +130,12 @@ function MessageForm() {
                     value={messageContent}
                     onChange={(e) => setMessageContent(e.target.value)}
                     placeholder="Write your message..."
+                    maxLength={MAX_MESSAGE_LENGTH}
                     required
                 />
+                <div style={{ fontSize: '0.8rem', color: charsRemaining < 20 ? 'red' : '#666' }}>
+                    {charsRemaining} characters remaining
+                </div>
                 <button type="submit" disabled={loading}>{loading ? 'Sending...' : 'Send Message'}</button>
                 {error && <p style={{ color: 'red' }}>{error}</p>}
                 {success && <p style={{ color: 'green' }}>{success}</p>}

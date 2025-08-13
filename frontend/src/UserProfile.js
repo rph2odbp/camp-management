@@ -1,6 +1,6 @@
 // frontend/src/UserProfile.js
 import React, { useState, useEffect } from 'react';
-import { db } from './firebase-config';
+import { db, auth } from './firebase-config';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 function UserProfile({ userId, onBack }) {
@@ -43,6 +43,15 @@ function UserProfile({ userId, onBack }) {
 
     fetchData();
   }, [userId]);
+
+  useEffect(() => {
+    // If the profile being viewed is the current user's,
+    // force a token refresh to get the latest custom claims.
+    if (auth.currentUser && auth.currentUser.uid === userId) {
+      auth.currentUser.getIdToken(true);
+    }
+  }, [userId]);
+
 
   if (loading) return <p>Loading profile...</p>;
   if (error) return <p className="error-message">{error}</p>;

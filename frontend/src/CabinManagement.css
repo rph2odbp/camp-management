@@ -1,0 +1,61 @@
+.cabin-management-container {
+    padding: 20px;
+}
+
+.cabin-form {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.cabin-form input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.cabin-form button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #28a745;
+    color: white;
+}
+
+.cabin-form button[type="button"] {
+    background-color: #6c757d;
+}
+
+.cabin-list {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.cabin-item {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.cabin-actions button {
+    margin-right: 10px;
+    cursor: pointer;
+    background-color: #ffc107;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+.cabin-actions button:last-child {
+    background-color: #dc3545;
+    color: white;
+}
+
+.error-message {
+    color: red;
+    margin-bottom: 15px;
+}

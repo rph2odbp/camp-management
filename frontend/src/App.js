@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import Auth from './Auth';
 import { auth, db } from './firebase-config';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onIdTokenChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import ParentPortal from './ParentPortal';
 import StaffPortal from './StaffPortal';
@@ -20,25 +20,16 @@ function App() {
   const [viewingProfileId, setViewingProfileId] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
       setLoadingUser(true);
       if (currentUser) {
         setUser(currentUser);
-        let retries = 3;
-        while (retries > 0) {
-          try {
-            await currentUser.getIdToken(true);
-            const userDocSnap = await getDoc(doc(db, 'users', currentUser.uid));
-            if (userDocSnap.exists()) {
-              setUserData(userDocSnap.data());
-              break;
-            }
-          } catch (error) {
-            console.error("Error fetching user data:", error);
-          }
-          retries--;
-          await new Promise(res => setTimeout(res, 1000));
+        
+        const userDocSnap = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDocSnap.exists()) {
+          setUserData(userDocSnap.data());
         }
+
       } else {
         setUser(null);
         setUserData(null);

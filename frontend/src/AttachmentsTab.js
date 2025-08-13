@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, storage } from './firebase-config';
-import { collection, query, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, query, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 function AttachmentsTab({ camper }) {
     const [attachments, setAttachments] = useState([]);
@@ -44,6 +44,7 @@ function AttachmentsTab({ camper }) {
             await addDoc(attachmentsRef, {
                 name: file.name,
                 url: downloadURL,
+                storagePath: storageRef.fullPath, // Store the path for deletion
                 createdAt: serverTimestamp()
             });
 
@@ -52,6 +53,23 @@ function AttachmentsTab({ camper }) {
             setError('Failed to upload file.');
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleDelete = async (attachment) => {
+        if (!window.confirm(`Are you sure you want to delete ${attachment.name}?`)) return;
+
+        try {
+            // Delete from Storage
+            const storageRef = ref(storage, attachment.storagePath);
+            await deleteObject(storageRef);
+
+            // Delete from Firestore
+            const docRef = doc(db, `campers/${camper.id}/attachments`, attachment.id);
+            await deleteDoc(docRef);
+        } catch (err) {
+            console.error("Error deleting attachment:", err);
+            setError('Failed to delete attachment.');
         }
     };
 
@@ -65,12 +83,14 @@ function AttachmentsTab({ camper }) {
             <button onClick={handleUpload} disabled={!file || uploading}>
                 {uploading ? 'Uploading...' : 'Upload'}
             </button>
+            {error && <p style={{ color: 'red' }}>{error}</p>}
 
             {attachments.length > 0 ? (
                 <ul>
                     {attachments.map(attachment => (
                         <li key={attachment.id}>
                             <a href={attachment.url} target="_blank" rel="noopener noreferrer">{attachment.name}</a>
+                            <button onClick={() => handleDelete(attachment)} style={{ marginLeft: '10px' }}>Delete</button>
                         </li>
                     ))}
                 </ul>

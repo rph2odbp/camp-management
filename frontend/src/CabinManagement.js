@@ -1,109 +1,116 @@
-// frontend/src/CabinManagement.js
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
-import { collection, onSnapshot, doc, addDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import './CabinManagement.css';
 
 function CabinManagement() {
     const [cabins, setCabins] = useState([]);
-    const [campers, setCampers] = useState([]);
-    const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [newCabinName, setNewCabinName] = useState('');
+    
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentCabin, setCurrentCabin] = useState({ name: '', capacity: '', gender: 'Co-ed' });
 
     useEffect(() => {
-        // ... (data fetching logic remains the same)
-        const unsubCabins = onSnapshot(collection(db, 'cabins'), snapshot => setCabins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-        const unsubCampers = onSnapshot(collection(db, 'campers'), snapshot => setCampers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-        const unsubStaff = onSnapshot(collection(db, 'users'), snapshot => setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(u => u.role === 'staff')));
-        setLoading(false);
-        return () => { unsubCabins(); unsubCampers(); unsubStaff(); };
+        const unsubscribe = onSnapshot(collection(db, 'cabins'), 
+            (snapshot) => {
+                const cabinsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setCabins(cabinsData);
+                setLoading(false);
+            },
+            (err) => {
+                setError('Failed to fetch cabins.');
+                setLoading(false);
+            }
+        );
+        return () => unsubscribe();
     }, []);
-
-    const handleCreateCabin = async (e) => {
-        e.preventDefault();
-        if (!newCabinName.trim()) return;
-        await addDoc(collection(db, 'cabins'), { name: newCabinName, assignedStaff: [], assignedCampers: [] });
-        setNewCabinName('');
+    
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setCurrentCabin({ ...currentCabin, [name]: value });
     };
 
-    const assignItem = async (itemId, itemType, cabinId) => {
-        const cabinRef = doc(db, 'cabins', cabinId);
-        await updateDoc(cabinRef, {
-            [itemType]: arrayUnion(itemId)
-        });
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!currentCabin.name || !currentCabin.capacity || currentCabin.capacity <= 0) {
+            setError('Please fill out all fields correctly.');
+            return;
+        }
+
+        const dataToSave = {
+            name: currentCabin.name,
+            capacity: Number(currentCabin.capacity),
+            gender: currentCabin.gender
+        };
+
+        try {
+            if (isEditing) {
+                const cabinRef = doc(db, 'cabins', currentCabin.id);
+                await updateDoc(cabinRef, dataToSave);
+            } else {
+                await addDoc(collection(db, 'cabins'), dataToSave);
+            }
+            resetForm();
+        } catch (err) {
+            setError('Failed to save cabin.');
+        }
     };
     
-    const unassignItem = async (itemId, itemType, cabinId) => {
-        const cabinRef = doc(db, 'cabins', cabinId);
-        await updateDoc(cabinRef, {
-            [itemType]: arrayRemove(itemId)
-        });
+    const handleEdit = (cabin) => {
+        setIsEditing(true);
+        setCurrentCabin(cabin);
     };
 
-    const findCabinForCamper = (camperId) => cabins.find(c => c.assignedCampers.includes(camperId));
-    const findCabinForStaff = (staffId) => cabins.find(c => c.assignedStaff.includes(staffId));
+    const handleDelete = async (cabinId) => {
+        if (window.confirm('Are you sure you want to delete this cabin? This action cannot be undone.')) {
+            try {
+                await deleteDoc(doc(db, 'cabins', cabinId));
+            } catch (err) {
+                setError('Failed to delete cabin.');
+            }
+        }
+    };
+    
+    const resetForm = () => {
+        setIsEditing(false);
+        setCurrentCabin({ name: '', capacity: '', gender: 'Co-ed' });
+        setError('');
+    };
 
-    if (loading) return <p>Loading cabin data...</p>;
-    if (error) return <p style={{ color: 'red' }}>{error}</p>;
+    if (loading) return <p>Loading cabins...</p>;
 
     return (
-        <div>
-            <h2>Cabin Management</h2>
-            {/* ... (Create Cabin Form remains the same) */}
+        <div className="cabin-management-container">
+            <h3>{isEditing ? 'Edit Cabin' : 'Create New Cabin'}</h3>
+            {error && <p className="error-message">{error}</p>}
+            <form onSubmit={handleSubmit} className="cabin-form">
+                <input type="text" name="name" value={currentCabin.name} onChange={handleInputChange} placeholder="Cabin Name" required />
+                <input type="number" name="capacity" value={currentCabin.capacity} onChange={handleInputChange} placeholder="Capacity" required />
+                <select name="gender" value={currentCabin.gender} onChange={handleInputChange}>
+                    <option value="Co-ed">Co-ed</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+                <button type="submit">{isEditing ? 'Update Cabin' : 'Create Cabin'}</button>
+                {isEditing && <button type="button" onClick={resetForm}>Cancel</button>}
+            </form>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                {/* Unassigned Lists */}
-                <div>
-                    <h4>Unassigned Campers</h4>
-                    <ul>
-                        {campers.filter(c => !findCabinForCamper(c.id)).map(camper => (
-                            <li key={camper.id}>
-                                {camper.name}
-                                <select onChange={(e) => assignItem(camper.id, 'assignedCampers', e.target.value)} value="">
-                                    <option value="">Assign to...</option>
-                                    {cabins.map(cabin => <option key={cabin.id} value={cabin.id}>{cabin.name}</option>)}
-                                </select>
-                            </li>
-                        ))}
-                    </ul>
-                    <h4>Unassigned Staff</h4>
-                    <ul>
-                        {staff.filter(s => !findCabinForStaff(s.id)).map(staffMember => (
-                            <li key={staffMember.id}>
-                                {staffMember.firstName} {staffMember.lastName}
-                                <select onChange={(e) => assignItem(staffMember.id, 'assignedStaff', e.target.value)} value="">
-                                     <option value="">Assign to...</option>
-                                    {cabins.map(cabin => <option key={cabin.id} value={cabin.id}>{cabin.name}</option>)}
-                                </select>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+            <hr />
 
-                {/* Cabins List */}
-                <div>
-                    <h4>Cabins</h4>
-                    {cabins.map(cabin => (
-                        <div key={cabin.id} style={{ border: '1px solid black', margin: '10px', padding: '10px' }}>
-                            <h5>{cabin.name}</h5>
-                            <b>Staff:</b>
-                            <ul>
-                                {cabin.assignedStaff.map(staffId => {
-                                    const staffMember = staff.find(s => s.id === staffId);
-                                    return <li key={staffId}>{staffMember?.firstName} <button onClick={() => unassignItem(staffId, 'assignedStaff', cabin.id)}>x</button></li>;
-                                })}
-                            </ul>
-                            <b>Campers:</b>
-                            <ul>
-                                {cabin.assignedCampers.map(camperId => {
-                                    const camper = campers.find(c => c.id === camperId);
-                                    return <li key={camperId}>{camper?.name} <button onClick={() => unassignItem(camperId, 'assignedCampers', cabin.id)}>x</button></li>;
-                                })}
-                            </ul>
+            <h3>Existing Cabins</h3>
+            <div className="cabin-list">
+                {cabins.map(cabin => (
+                    <div key={cabin.id} className="cabin-item">
+                        <h4>{cabin.name}</h4>
+                        <p>Capacity: {cabin.capacity}</p>
+                        <p>Gender: {cabin.gender}</p>
+                        <div className="cabin-actions">
+                            <button onClick={() => handleEdit(cabin)}>Edit</button>
+                            <button onClick={() => handleDelete(cabin.id)}>Delete</button>
                         </div>
-                    ))}
-                </div>
+                    </div>
+                ))}
             </div>
         </div>
     );

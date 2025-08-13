@@ -1,0 +1,26 @@
+.user-management-container {
+    padding: 20px;
+}
+
+.user-management-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.user-management-container th, .user-management-container td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.user-management-container th {
+    background-color: #f2f2f2;
+}
+
+.user-management-container select {
+    padding: 5px;
+}
+
+.error-message {
+    color: red;
+}

@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
-import { collection, query, onSnapshot, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, doc, deleteDoc, updateDoc, orderBy } from 'firebase/firestore';
+
+// Helper function to format dates
+const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    date.setDate(date.getDate() + 1);
+    return date.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+    });
+};
 
 function AdminSessionPanel() {
     const [sessions, setSessions] = useState([]);
@@ -13,16 +25,17 @@ function AdminSessionPanel() {
     const [newSessionStartDate, setNewSessionStartDate] = useState('');
     const [newSessionEndDate, setNewSessionEndDate] = useState('');
     const [newSessionCapacity, setNewSessionCapacity] = useState('');
+    const [newSessionGender, setNewSessionGender] = useState('Male'); // Default to 'Male'
     const [isAdding, setIsAdding] = useState(false);
 
     // State for the "Edit Session" form
     const [editingSessionId, setEditingSessionId] = useState(null);
-    const [editFormData, setEditFormData] = useState({ name: '', startDate: '', endDate: '', capacity: '' });
+    const [editFormData, setEditFormData] = useState({ name: '', startDate: '', endDate: '', capacity: '', gender: 'Male' });
     const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         setLoading(true);
-        const sessionsQuery = query(collection(db, 'sessions'));
+        const sessionsQuery = query(collection(db, 'sessions'), orderBy('startDate'));
         const unsubscribeSessions = onSnapshot(sessionsQuery, (snapshot) => {
             const sessionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setSessions(sessionsData);
@@ -59,11 +72,13 @@ function AdminSessionPanel() {
                 startDate: newSessionStartDate,
                 endDate: newSessionEndDate,
                 capacity: parseInt(newSessionCapacity, 10),
+                gender: newSessionGender,
             });
             setNewSessionName('');
             setNewSessionStartDate('');
             setNewSessionEndDate('');
             setNewSessionCapacity('');
+            setNewSessionGender('Male');
         } catch (err) {
             setError('Failed to add session.');
         } finally {
@@ -83,7 +98,7 @@ function AdminSessionPanel() {
 
     const handleEditClick = (session) => {
         setEditingSessionId(session.id);
-        setEditFormData({ name: session.name, startDate: session.startDate, endDate: session.endDate, capacity: session.capacity });
+        setEditFormData({ name: session.name, startDate: session.startDate, endDate: session.endDate, capacity: session.capacity, gender: session.gender || 'Male' });
     };
 
     const handleUpdateSession = async (e) => {
@@ -118,6 +133,10 @@ function AdminSessionPanel() {
                     <input type="date" value={editFormData.startDate} onChange={(e) => setEditFormData({ ...editFormData, startDate: e.target.value })} required />
                     <input type="date" value={editFormData.endDate} onChange={(e) => setEditFormData({ ...editFormData, endDate: e.target.value })} required />
                     <input type="number" value={editFormData.capacity} onChange={(e) => setEditFormData({ ...editFormData, capacity: e.target.value })} placeholder="Capacity" required />
+                    <select value={editFormData.gender} onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value })}>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
                     <button type="submit" disabled={isUpdating}>{isUpdating ? 'Updating...' : 'Update Session'}</button>
                     <button type="button" onClick={() => setEditingSessionId(null)}>Cancel</button>
                 </form>
@@ -131,6 +150,10 @@ function AdminSessionPanel() {
                     <input type="date" value={newSessionStartDate} onChange={(e) => setNewSessionStartDate(e.target.value)} required />
                     <input type="date" value={newSessionEndDate} onChange={(e) => setNewSessionEndDate(e.target.value)} required />
                     <input type="number" value={newSessionCapacity} onChange={(e) => setNewSessionCapacity(e.target.value)} placeholder="Capacity" required />
+                    <select value={newSessionGender} onChange={(e) => setNewSessionGender(e.target.value)}>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
                     <button type="submit" disabled={isAdding}>{isAdding ? 'Adding...' : 'Add Session'}</button>
                 </form>
             )}
@@ -141,7 +164,7 @@ function AdminSessionPanel() {
                     const enrolledCount = campers.filter(c => c.enrolledSessionIds?.includes(session.id)).length;
                     return (
                         <li key={session.id}>
-                            <p><strong>{session.name}</strong> ({session.startDate} to {session.endDate})</p>
+                            <p><strong>{session.name}</strong> ({formatDate(session.startDate)} to {formatDate(session.endDate)}) - {session.gender}</p>
                             <p>Capacity: {enrolledCount} / {session.capacity}</p>
                             <button onClick={() => handleEditClick(session)}>Edit</button>
                             <button onClick={() => handleDeleteSession(session.id)}>Delete</button>

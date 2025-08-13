@@ -17,6 +17,13 @@
     extensions = [
       "dbaeumer.vscode-eslint"
       "esbenp.prettier-vscode"
+      "vscode.emmet"
+      "ms-azuretools.vscode-docker"
+      "github.copilot"
+      "ms-vscode.vscode-typescript-next"
+      "apollographql.vscode-apollo"
+      "figma.figma-for-vs-code"
+      "wallabyjs.wallaby-vscode"
     ];
 
     # Workspace lifecycle hooks
@@ -26,26 +33,27 @@
         # Install firebase-tools globally via npm to avoid Nix build issues
         install-firebase-and-npm-packages = "npm install -g firebase-tools && npm install && npm install --prefix backend && npm install --prefix frontend";
       };
-      # onStart is empty to prevent conflicts with the Firebase emulator
-      # You should start the emulators manually with `firebase emulators:start`
+      # onStart is kept empty to prevent conflicts with the Firebase emulator.
+      # You should start the emulators manually from the Previews panel.
       onStart = {};
     };
 
-    # Configure web previews for the Firebase Emulator Suite
+    # Configure web previews for your application and the Firebase Emulator Suite
     previews = {
       enable = true;
       previews = {
-        # Emulator UI
-        # Access the UI by running `firebase emulators:start` in the terminal
-        # and opening the "Emulator UI" preview.
-        "emulator-ui" = {
-          command = [ "echo" "Firebase Emulator UI running on http://$HOST:4000. Start emulators and refresh." ];
+        # Emulator Suite Preview
+        # This command starts the emulators with the correct project context to avoid permission errors.
+        # It also imports any data from your .firebase/emulated-data directory.
+        # Access the Emulator UI at its specified port (usually 4000).
+        "emulators" = {
+          command = [ "firebase" "emulators:start" "--project=kateri-fbc" "--import=.firebase/emulated-data" ];
           manager = "web";
         };
         # Web App Preview (Hosting Emulator)
         # This preview will show your web application served by the hosting emulator.
         "web-app" = {
-          command = ["npm" "start" "--prefix" "frontend" "--" "--port" "$PORT"];
+          command = [ "npm" "start" "--prefix" "frontend" "--" "--port" "$PORT" ];
           manager = "web";
         };
       };

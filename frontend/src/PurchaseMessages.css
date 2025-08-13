@@ -1,0 +1,54 @@
+.purchase-messages-container {
+    margin-top: 20px;
+}
+
+.packages-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.package-item {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 20px;
+    text-align: center;
+    width: 200px;
+}
+
+.package-item h3 {
+    margin-top: 0;
+}
+
+.package-price {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.package-credits {
+    font-size: 1.1em;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+.purchase-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+.purchase-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: red;
+    margin-bottom: 15px;
+}

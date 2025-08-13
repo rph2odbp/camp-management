@@ -9,7 +9,46 @@ function SessionList() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // ... (data fetching remains the same)
+    setLoading(true);
+    setError(null);
+
+    // Query for sessions, ordered by start date
+    const sessionQuery = query(collection(db, 'sessions'), orderBy('startDate'));
+
+    const unsubscribeSessions = onSnapshot(sessionQuery, (querySnapshot) => {
+      const sessionsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setSessions(sessionsData);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error fetching sessions:", err);
+      setError('Failed to load sessions. Please check the console for more details.');
+      setLoading(false);
+    });
+
+    // Query for campers
+    const camperQuery = query(collection(db, 'campers'));
+
+    const unsubscribeCampers = onSnapshot(camperQuery, (querySnapshot) => {
+        const campersData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        setCampers(campersData);
+    }, (err) => {
+        console.error("Error fetching campers:", err);
+        // We might not want to show a fatal error for this,
+        // as the primary data is sessions. Spots left can just be blank.
+    });
+
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribeSessions();
+      unsubscribeCampers();
+    };
   }, []);
 
   // --- RESTORED HELPER FUNCTIONS ---
@@ -22,8 +61,13 @@ function SessionList() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+    // Add 1 to the day because of timezone conversion issues where it might show the previous day.
+    const date = new Date(dateString);
+    date.setDate(date.getDate() + 1);
+    return date.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
     });
   };
   // --- END RESTORED FUNCTIONS ---

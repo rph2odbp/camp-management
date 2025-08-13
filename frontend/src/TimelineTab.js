@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase-config';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
+import './TimelineTab.css'; // Assuming you will create a CSS file for styles
 
 function TimelineTab({ camper }) {
     const [timelineEvents, setTimelineEvents] = useState([]);
@@ -26,17 +27,20 @@ function TimelineTab({ camper }) {
     if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
     return (
-        <div>
+        <div className="timeline-tab">
             <h4>Registration Timeline</h4>
             {timelineEvents.length > 0 ? (
-                <ul>
+                <div className="timeline">
                     {timelineEvents.map(event => (
-                        <li key={event.id}>
-                            <strong>{event.title}</strong> - {event.timestamp?.toDate().toLocaleString()}
-                            {event.details && <p>{event.details}</p>}
-                        </li>
+                        <div key={event.id} className="timeline-item">
+                            <div className="timeline-content">
+                                <h5>{event.title}</h5>
+                                <span className="timeline-date">{event.timestamp?.toDate().toLocaleString()}</span>
+                                {event.details && <p>{event.details}</p>}
+                            </div>
+                        </div>
                     ))}
-                </ul>
+                </div>
             ) : (
                 <p>No timeline events yet.</p>
             )}

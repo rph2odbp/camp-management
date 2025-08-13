@@ -4,29 +4,28 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Helper Functions ---
-    function getUserDoc(userId) {
-      return get(/databases/$(database)/documents/users/$(userId));
-    }
+    // UPDATED: These functions now check the auth token directly, which is more secure and efficient.
     function isRole(role) {
-      let userDoc = getUserDoc(request.auth.uid);
-      return request.auth != null && userDoc != null && 'role' in userDoc.data && userDoc.data.role == role;
+      return request.auth != null && request.auth.token.role == role;
     }
+
     function isOneOfRoles(roles) {
-      let userDoc = getUserDoc(request.auth.ud);
-      return request.auth != null && userDoc != null && 'role' in userDoc.data && userDoc.data.role in roles;
+      return request.auth != null && request.auth.token.role in roles;
     }
+
     function isAuthOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
     // --- Users Collection ---
     match /users/{userId} {
-      allow read: if isAuthOwner(userId) || isRole('admin');
+      // Any admin can read any user profile. A user can read their own profile.
+      allow read: if isRole('admin') || isAuthOwner(userId);
+      // Only admins can modify the users collection.
       allow list, create, update, delete: if isRole('admin');
     }
 
     // --- Campers Collection ---
-    // This rule allows admins and staff to list all campers. Parents can only query for their own children.
     match /campers/{camperId} {
       allow get: if isOneOfRoles(['admin', 'staff']) || (isRole('parent') && resource.data.parentId == request.auth.uid);
       allow list: if isOneOfRoles(['admin', 'staff']) || (isRole('parent') && request.query.where.get('parentId', '') == request.auth.uid);
@@ -36,10 +35,25 @@ service cloud.firestore {
     }
 
     // --- Sessions Collection ---
-    // Sessions should be publicly readable by anyone, but only writable by admins.
     match /sessions/{sessionId} {
-      allow get, list: if true; // CORRECTED: Allow public access
+      allow get, list: if true; // Publicly readable
       allow write: if isRole('admin');
+    }
+    
+    // --- Cabins Collection ---
+    match /cabins/{cabinId} {
+        allow read, list: if isOneOfRoles(['admin', 'staff']);
+        allow write: if isOneOfRoles(['admin', 'staff']);
+    }
+
+    // --- Messages Collection ---
+    match /messages/{messageId} {
+      allow create: if request.auth.uid == request.resource.data.senderId;
+      allow read, delete: if 
+        request.auth.uid == resource.data.senderId || 
+        isOneOfRoles(['admin', 'staff']) ||
+        (isRole('parent') && exists(/databases/$(database)/documents/campers/$(resource.data.camperId)) &&
+        get(/databases/$(database)/documents/campers/$(resource.data.camperId)).data.parentId == request.auth.uid);
     }
   }
 }
