@@ -1,15 +1,14 @@
-// frontend/src/firebase-config.js
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getFunctions } from "firebase/functions";
-import { getRemoteConfig } from "firebase/remote-config";
-import { getAnalytics } from "firebase/analytics";
+import { initializeApp } from 'firebase/app';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCNZL21a-E2zyL9_3tsKqAxek1juanuzmw",
+  apiKey: "AIzaSyAoKUvHxDd5aL-8Tg5ehOx6sbUE3kR01AE",
   authDomain: "kateri-fbc.firebaseapp.com",
+  databaseURL: "https://kateri-fbc-default-rtdb.firebaseio.com",
   projectId: "kateri-fbc",
   storageBucket: "kateri-fbc.appspot.com",
   messagingSenderId: "735578066617",
@@ -20,11 +19,21 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize and export Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app, "kateri-db"); 
-export const storage = getStorage(app);
-export const functions = getFunctions(app);
-export const remoteConfig = getRemoteConfig(app);
-export const analytics = getAnalytics(app);
-export { app };
+// Get a reference to the services
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+const functions = getFunctions(app);
+
+// In a development environment, connect to the emulators
+// This code MUST be below the service initializations
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  console.log("Development environment detected. Connecting to emulators.");
+  // Note: The ports should match what's in your firebase.json and the emulator startup logs.
+  connectAuthEmulator(auth, "http://127.0.0.1:9099");
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  connectStorageEmulator(storage, "127.0.0.1", 9199);
+  connectFunctionsEmulator(functions, "127.0.0.1", 5002);
+}
+
+export { app, auth, db, storage, functions };

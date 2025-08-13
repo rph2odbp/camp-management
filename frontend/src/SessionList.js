@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from './firebase-config';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 
 function SessionList() {
   const [sessions, setSessions] = useState([]);
@@ -9,6 +8,7 @@ function SessionList() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    const db = getFirestore(); // Get the Firestore instance here
     setLoading(true);
     setError(null);
 
@@ -39,19 +39,14 @@ function SessionList() {
         setCampers(campersData);
     }, (err) => {
         console.error("Error fetching campers:", err);
-        // We might not want to show a fatal error for this,
-        // as the primary data is sessions. Spots left can just be blank.
     });
 
-
-    // Cleanup on unmount
     return () => {
       unsubscribeSessions();
       unsubscribeCampers();
     };
   }, []);
 
-  // --- RESTORED HELPER FUNCTIONS ---
   const getSpotsLeft = (sessionId, capacity) => {
     const enrolledCount = campers.filter(c => 
         c.sessionRegistrations?.some(r => r.sessionId === sessionId && r.status === 'enrolled')
@@ -61,7 +56,6 @@ function SessionList() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    // Add 1 to the day because of timezone conversion issues where it might show the previous day.
     const date = new Date(dateString);
     date.setDate(date.getDate() + 1);
     return date.toLocaleDateString('en-US', {
@@ -70,9 +64,7 @@ function SessionList() {
         year: 'numeric',
     });
   };
-  // --- END RESTORED FUNCTIONS ---
 
-  // --- New Logic to Split Sessions into Two Columns ---
   const midpoint = Math.ceil(sessions.length / 2);
   const leftColumnSessions = sessions.slice(0, midpoint);
   const rightColumnSessions = sessions.slice(midpoint);

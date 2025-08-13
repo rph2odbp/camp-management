@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from './firebase-config';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import './SessionManagement.css';
 
 // Helper function to format date strings from YYYY-MM-DD to MM/DD/YYYY
@@ -19,7 +18,7 @@ function SessionManagement() {
     const [currentSession, setCurrentSession] = useState({ name: '', startDate: '', endDate: '', capacity: 0, gender: 'Co-ed' });
 
     useEffect(() => {
-        // Query to order sessions by start date
+        const db = getFirestore(); // Get the Firestore instance here
         const sessionsQuery = query(collection(db, 'sessions'), orderBy('startDate'));
         
         const unsubscribe = onSnapshot(sessionsQuery, 
@@ -48,6 +47,7 @@ function SessionManagement() {
             return;
         }
 
+        const db = getFirestore(); // Get the Firestore instance here
         const dataToSave = {
             name: currentSession.name,
             startDate: currentSession.startDate,
@@ -75,6 +75,7 @@ function SessionManagement() {
     };
 
     const handleDelete = async (sessionId) => {
+        const db = getFirestore(); // Get the Firestore instance here
         if (window.confirm('Are you sure you want to delete this session?')) {
             try {
                 await deleteDoc(doc(db, 'sessions', sessionId));

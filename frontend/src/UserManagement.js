@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { functions } from './firebase-config'; // Assuming you have an httpsCallable function setup
-import { httpsCallable } from 'firebase/functions';
-
-const listAllUsers = httpsCallable(functions, 'listUsers');
-const setUserRole = httpsCallable(functions, 'setUserRole');
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 function UserManagement() {
     const [users, setUsers] = useState([]);
@@ -12,6 +8,9 @@ function UserManagement() {
     const [updating, setUpdating] = useState(null); // To track which user is being updated
 
     useEffect(() => {
+        const functions = getFunctions(); // Get the Functions instance here
+        const listAllUsers = httpsCallable(functions, 'listUsers');
+        
         const fetchUsers = async () => {
             setLoading(true);
             try {
@@ -28,6 +27,9 @@ function UserManagement() {
     }, []);
     
     const handleRoleChange = async (uid, newRole) => {
+        const functions = getFunctions(); // Get the Functions instance here
+        const setUserRole = httpsCallable(functions, 'setUserRole');
+        
         setUpdating(uid);
         setError('');
         try {

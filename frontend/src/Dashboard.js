@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db } from './firebase-config';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import './Dashboard.css';
 
 const formatDate = (dateString) => {
@@ -16,16 +15,15 @@ function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // State for filters
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
     const [selectedSessionId, setSelectedSessionId] = useState('');
     const [selectedCabinId, setSelectedCabinId] = useState('');
 
     useEffect(() => {
+        const db = getFirestore(); // Get the Firestore instance here
         const fetchAllData = async () => {
             setLoading(true);
             try {
-                // Fetch sessions, campers, and cabins
                 const sessionsQuery = query(collection(db, 'sessions'), orderBy('startDate'));
                 const [sessionsSnapshot, campersSnapshot, cabinsSnapshot] = await Promise.all([
                     getDocs(sessionsQuery),
@@ -40,7 +38,6 @@ function Dashboard() {
                 setCampers(allCampers);
                 setCabins(allCabins);
 
-                // Process stats for each session
                 const processedSessionData = sessions.map(session => {
                     let enrolledCount = 0;
                     let waitlistedCount = 0;
@@ -65,7 +62,6 @@ function Dashboard() {
         fetchAllData();
     }, []);
     
-    // Memoized derived data for filters
     const { years, filteredSessions, filteredCampers } = useMemo(() => {
         const years = [...new Set(sessionData.map(s => s.startDate.substring(0, 4)))].sort((a,b) => b-a);
         
@@ -89,7 +85,6 @@ function Dashboard() {
 
     return (
         <div className="dashboard-layout">
-            {/* Left Sidebar for Stats */}
             <div className="stats-sidebar">
                 <h3>Session Stats</h3>
                 {sessionData.map(session => (
@@ -104,7 +99,6 @@ function Dashboard() {
                 ))}
             </div>
 
-            {/* Main Content for Camper Filtering */}
             <div className="camper-view-area">
                 <div className="filters-container">
                     <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
