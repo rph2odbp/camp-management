@@ -4,74 +4,42 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Helper Functions ---
-    // Safely get the user document resource.
     function getUserDoc(userId) {
       return get(/databases/$(database)/documents/users/$(userId));
     }
-
-    // Check if the user is authenticated and has a specific role.
-    // This is now safe against non-existent user documents or missing roles.
     function isRole(role) {
       let userDoc = getUserDoc(request.auth.uid);
-      return request.auth != null &&
-             userDoc != null &&
-             'role' in userDoc.data &&
-             userDoc.data.role == role;
+      return request.auth != null && userDoc != null && 'role' in userDoc.data && userDoc.data.role == role;
     }
-    
-    // Check if the user has one of several roles.
     function isOneOfRoles(roles) {
-      let userDoc = getUserDoc(request.auth.uid);
-      return request.auth != null &&
-             userDoc != null &&
-             'role' in userDoc.data &&
-             userDoc.data.role in roles;
+      let userDoc = getUserDoc(request.auth.ud);
+      return request.auth != null && userDoc != null && 'role' in userDoc.data && userDoc.data.role in roles;
     }
-
-    // Check if the currently authenticated user is the owner of a document.
     function isAuthOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
     // --- Users Collection ---
     match /users/{userId} {
-      // A user can always read their own document. Admins can read any user document.
       allow read: if isAuthOwner(userId) || isRole('admin');
-      
-      // Creating a user document is handled by a secure Cloud Function.
-      // Admins can manage all user documents.
       allow list, create, update, delete: if isRole('admin');
     }
 
     // --- Campers Collection ---
+    // This rule allows admins and staff to list all campers. Parents can only query for their own children.
     match /campers/{camperId} {
-      // Parents can read their own campers. Staff and admins can read any camper.
-      allow read: if isOneOfRoles(['admin', 'staff']) || (isRole('parent') && resource.data.parentId == request.auth.uid);
-      
-      // Parents and admins can create campers.
+      allow get: if isOneOfRoles(['admin', 'staff']) || (isRole('parent') && resource.data.parentId == request.auth.uid);
+      allow list: if isOneOfRoles(['admin', 'staff']) || (isRole('parent') && request.query.where.get('parentId', '') == request.auth.uid);
       allow create: if isOneOfRoles(['parent', 'admin']);
-      
-      // Parents can update their own campers. Admins can update any camper.
       allow update: if isRole('admin') || (isRole('parent') && resource.data.parentId == request.auth.uid);
-      
-      // Only admins can delete campers.
       allow delete: if isRole('admin');
     }
-    
-    // Anyone who is logged in can list the campers collection. 
-    // The more specific read rules above will still protect individual documents.
-    match /campers/{document=**} {
-      allow list: if request.auth != null;
-    }
 
-    // --- Sessions Collection (Publicly Readable) ---
+    // --- Sessions Collection ---
+    // Sessions should be publicly readable by anyone, but only writable by admins.
     match /sessions/{sessionId} {
-      // All authenticated users can read and list session info.
-      allow get, list: if request.auth != null;
-      // Only admins can create, update, or delete sessions.
+      allow get, list: if true; // CORRECTED: Allow public access
       allow write: if isRole('admin');
     }
-
-    // (Add other collection rules here, following the same secure patterns)
   }
 }
