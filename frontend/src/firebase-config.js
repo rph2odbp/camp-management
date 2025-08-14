@@ -27,13 +27,13 @@ const functions = getFunctions(app);
 
 // In a development environment, connect to the emulators
 // This code MUST be below the service initializations
-if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+if (process.env.NODE_ENV === 'development') {
   console.log("Development environment detected. Connecting to emulators.");
   // Note: The ports should match what's in your firebase.json and the emulator startup logs.
-  connectAuthEmulator(auth, "http://127.0.0.1:9099");
-  connectFirestoreEmulator(db, "127.0.0.1", 8080);
-  connectStorageEmulator(storage, "127.0.0.1", 9199);
-  connectFunctionsEmulator(functions, "127.0.0.1", 5002);
+  connectAuthEmulator(auth, `http://${window.location.hostname}:9099`, { disableCors: true });
+  connectFirestoreEmulator(db, window.location.hostname, 8080);
+  connectStorageEmulator(storage, window.location.hostname, 9199);
+  connectFunctionsEmulator(functions, window.location.hostname, 5002);
 }
 
 export { app, auth, db, storage, functions };

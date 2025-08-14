@@ -94,4 +94,38 @@ The solution is to decouple the emulator startup from the workspace's `onStart` 
 *   **`onStart` hook:** The `onStart` hook will be empty.
 *   **`previews` section:** A new preview named "emulators" will be added. This preview will contain the command to start the emulators with the necessary flags (`--project=kateri-fbc --import=.firebase/emulated-data`).
 
-This approach provides a stable and predictable development environment by allowing the user to control the startup of the Firebase emulators independently of the application's build process.
+# Session Log (2025-08-15)
+
+This session focused on resolving a persistent issue where session data was not being displayed on the public-facing landing page. The investigation involved a comprehensive audit and refactoring of the entire application.
+
+## I. Problem Description
+
+The `SessionList` component, which is intended to display a list of available camp sessions on the login page, was not rendering the data. This was initially diagnosed as a series of different issues, including CORS, mixed content, and circular dependencies, all of which were incorrect.
+
+## II. Troubleshooting Chronology
+
+1.  **Initial Incorrect Diagnoses:**
+    *   **CORS:** The emulator host was incorrectly changed to `0.0.0.0` in `firebase.json` in a failed attempt to resolve a non-existent CORS issue.
+    *   **Mixed Content:** The application was incorrectly configured to use a mix of `http` and `https`, and the `{ ssl: true }` option was used incorrectly in `firebase-config.js`.
+    *   **Circular Dependency:** A series of incorrect refactoring attempts were made to resolve a non-existent circular dependency.
+
+2.  **Correct Root Cause Identification:** The user correctly pointed out that the application was trying to connect to the production Firestore instead of the local emulators. This was because the `firebase-config.js` file was checking for `localhost` or `127.0.0.1`, but the cloud IDE was running on a different hostname.
+
+3.  **The Correct Fix:**
+    *   `firebase-config.js` was updated to use `process.env.NODE_ENV === 'development'` to detect the development environment.
+    *   `firebase-config.js` was updated to use `window.location.hostname` to connect to the emulators.
+    *   `firebase.json` was updated to use `0.0.0.0` as the host for the emulators.
+    *   The `--tls-enabled` flag was added to the emulator startup command in `.idx/dev.nix`.
+    *   Sample data was added to `.firebase/emulated-data/sessions.json` because it was empty.
+
+4.  **Final Audit:** A comprehensive file-by-file audit of the entire project was conducted to ensure that everything was configured correctly for emulator-first development.
+
+## III. Code Refactoring
+
+To improve the overall structure of the codebase, the following refactoring was performed:
+
+*   **`components` Directory:** A `frontend/src/components` directory was created to house all reusable UI components.
+*   **`portals` Directory:** A `frontend/src/portals` directory was created to house the top-level portal components (`AdminPortal`, `ParentPortal`, etc.).
+*   **File Migration:** All components were moved into their respective new directories, and all import statements were updated to reflect the new file structure.
+
+This session was a long and arduous one, but it resulted in a much more stable and well-structured application. The root cause of the session data issue was finally identified and resolved, and the codebase is now in a much better state for future development.

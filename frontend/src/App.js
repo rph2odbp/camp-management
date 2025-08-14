@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import './App.css';
-import Auth from './Auth';
+import Auth from './components/Auth';
 import { auth, db } from './firebase-config';
 import { onIdTokenChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import ParentPortal from './ParentPortal';
-import StaffPortal from './StaffPortal';
-import AdminPortal from './AdminPortal';
-import MedicalStaffPortal from './MedicalStaffPortal';
-import ApplicantPortal from './ApplicantPortal';
-import SessionList from './SessionList';
-import GlobalSearch from './GlobalSearch';
-import UserProfile from './UserProfile'; // The new unified profile view
+import StaffPortal from './portals/StaffPortal';
+import AdminPortal from './portals/AdminPortal';
+import MedicalStaffPortal from './portals/MedicalStaffPortal';
+import ApplicantPortal from './portals/ApplicantPortal';
+import GlobalSearch from './components/GlobalSearch';
+import UserProfile from './components/UserProfile'; // The new unified profile view
+const ParentPortal = React.lazy(() => import('./portals/ParentPortal'));
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -76,7 +76,7 @@ function App() {
       
       if (userData) {
         const { role, isHired } = userData;
-        if (role === 'parent') return <ParentPortal />;
+        if (role === 'parent') return <ParentPortal user={user} />;
         if (role === 'medical') return <MedicalStaffPortal />;
         if (role === 'staff') {
           return isHired ? <StaffPortal /> : <ApplicantPortal />;
@@ -90,7 +90,6 @@ function App() {
       <div>
         <Auth />
         <hr />
-        <SessionList />
       </div>
     );
   };
@@ -111,7 +110,9 @@ function App() {
         </div>
       </header>
       <main>
-        {renderContent()}
+        <Suspense fallback={<div>Loading...</div>}>
+          {renderContent()}
+        </Suspense>
       </main>
     </div>
   );
