@@ -1,55 +1,47 @@
-# To learn more about how to use Nix to configure your environment, see
-# https://developers.google.com/idx/guides/customize-idx-env
-{ pkgs, ... }: {
-  # Which nixpkgs channel to use.
-  channel = "stable-24.05"; # or "unstable"
-  # Use https://search.nixos.org/packages to find packages
+{ pkgs, ... }:
+
+{
+  # Packages needed for full-stack Firebase monorepo development
   packages = [
+    pkgs.nodejs_22
+    pkgs.jdk
+    pkgs.lsof
+    pkgs.yarn
     pkgs.firebase-tools
-    pkgs.nodejs_20
   ];
-  # Sets environment variables in the workspace
-  env = {};
-  # Fast way to install nix packages from official nixpkgs
-  # nidex.dev.nix = {
-  #   packages = [
-  #     "nixpkgs.go"
-  #     "nixpkgs.python3"
-  #   ];
-  # };
-  # From https://open-vsx.org/
-  idx.extensions = [
-    "dbaeumer.vscode-eslint"
+
+  # Install all dependencies on environment creation
+  onCreate = {
+    command = "yarn install";
+    workingDirectory = "./kateri-monorepo";
+  };
+
+  # Build backend functions on environment start
+  onStart = [
+    {
+      command = "yarn build";
+      workingDirectory = "./kateri-monorepo/packages/functions";
+    }
   ];
-  idx.workspace = {
-    # Runs when a workspace is first created with this `dev.nix` file
-    onCreate = {
-      npm-install = "npm install";
-      # frontend-install = "npm install --prefix frontend";
-      # backend-install = "npm install --prefix backend";
-    };
-    # Runs when a workspace is (re)started
-    onStart = {
-      # "start-emulators" = "firebase emulators:start --project=kateri-fbc --import=.firebase/emulated-data";
-      # "start-frontend" = "npm start --prefix frontend";
-    };
-  };
-  # Enable previews and customize configuration
-  idx.previews = {
-    enable = true;
-    previews = {
-      # Emulator UI Preview
-      # This preview will show the Emulator UI when you run your emulators.
-      "emulator-ui" = {
-        command = [ "firebase" "emulators:start" "--project=kateri-fbc" "--import=.firebase/emulated-data" "--tls-enabled" ];
-        manager = "web";
+
+  # Previews for web and emulators
+  previews = [
+    {
+      id = "web";
+      label = "Web App";
+      command = "yarn start";
+      workingDirectory = "./kateri-monorepo/packages/web";
+      port = 3000; # adjust if your React dev server uses a different port
+    }
+    {
+      id = "emulators";
+      label = "Firebase Emulators";
+      command = "firebase emulators:start";
+      workingDirectory = "./kateri-monorepo";
+      env = {
+        NODE_OPTIONS = "--dns-result-order=ipv4first";
       };
-      # Web App Preview (Hosting Emulator)
-      # This preview will show your web application served by the hosting emulator.
-      "web-app" = {
-        command = [ "npm" "start" "--prefix" "frontend" "--" "--port" "$PORT" ];
-        manager = "web";
-      };
-    };
-  };
+      port = 4000; # default Emulator UI port
+    }
+  ];
 }
