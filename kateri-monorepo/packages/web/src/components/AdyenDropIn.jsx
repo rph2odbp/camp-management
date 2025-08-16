@@ -21,7 +21,7 @@ function AdyenDropIn({ paymentData, onPaymentResult }) {
         },
         onError: (error, component) => {
           onPaymentResult({ error });
-        }
+        },
       };
 
       const checkout = await AdyenCheckout(configuration);

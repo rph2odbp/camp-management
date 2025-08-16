@@ -3,6 +3,7 @@
 ## Setup
 
 1. **Install dependencies:**
+
    ```
    yarn add @adyen/api-library dotenv
    ```

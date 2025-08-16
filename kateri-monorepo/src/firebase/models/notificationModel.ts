@@ -1,4 +1,4 @@
-export type NotificationType = "confirmation" | "reminder" | "photo_update" | "custom";
+export type NotificationType = 'confirmation' | 'reminder' | 'photo_update' | 'custom';
 
 export interface Notification {
   id: string;

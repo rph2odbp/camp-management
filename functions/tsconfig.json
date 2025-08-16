@@ -10,7 +10,5 @@
     "lib": ["esnext", "dom"] // <-- Updated this line!
   },
   "compileOnSave": true,
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

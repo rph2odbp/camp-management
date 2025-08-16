@@ -24,7 +24,10 @@ export const createAdyenPaymentSession = functions.https.onCall(async (data, con
   const { amount, reference, returnUrl } = data;
 
   if (!amount || !reference || !returnUrl) {
-    throw new functions.https.HttpsError('invalid-argument', 'Missing required payment session information.');
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Missing required payment session information.',
+    );
   }
 
   try {
@@ -40,6 +43,9 @@ export const createAdyenPaymentSession = functions.https.onCall(async (data, con
     });
     return response;
   } catch (error: any) {
-    throw new functions.https.HttpsError('internal', error.message || 'Adyen Payment Session Error');
+    throw new functions.https.HttpsError(
+      'internal',
+      error.message || 'Adyen Payment Session Error',
+    );
   }
 });

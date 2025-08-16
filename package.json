@@ -2,5 +2,24 @@
   "dependencies": {
     "@adyen/adyen-web": "^6.20.0",
     "firebase": "^12.1.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0"
+  },
+  "scripts": {
+    "prepare": "husky install",
+    "format": "prettier --write ."
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write"
+    ],
+    "*.{json,md,mdx,css,scss,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

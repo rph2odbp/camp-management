@@ -1,4 +1,4 @@
-export type BalanceStatus = "outstanding" | "paid" | "overdue";
+export type BalanceStatus = 'outstanding' | 'paid' | 'overdue';
 
 export interface Balance {
   id: string;
