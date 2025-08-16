@@ -1,5 +1,6 @@
 {
   "name": "kateri-monorepo",
+  "version": "1.0.0",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -7,6 +8,16 @@
   "scripts": {
     "build": "yarn workspaces run build",
     "lint": "yarn workspaces run lint",
-    "test": "yarn workspaces run test"
+    "test": "yarn workspaces run test",
+    "start": "yarn workspace @kateri/web start",
+    "emulators": "yarn workspace @kateri/functions serve"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.4.5"
+  },
+  "resolutions": {
+    "**/typescript": "^5.4.5"
   }
 }

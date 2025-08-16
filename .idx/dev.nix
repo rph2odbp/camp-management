@@ -1,47 +1,53 @@
-{ pkgs, ... }:
+{ pkgs, ... }: {
+  # Which nixpkgs channel to use.
+  channel = "stable-24.05";
 
-{
-  # Packages needed for full-stack Firebase monorepo development
+  # Define the system packages that need to be available in your workspace.
   packages = [
+    pkgs.firebase-tools
     pkgs.nodejs_22
     pkgs.jdk
     pkgs.lsof
     pkgs.yarn
-    pkgs.firebase-tools
   ];
 
-  # Install all dependencies on environment creation
-  onCreate = {
-    command = "yarn install";
-    workingDirectory = "./kateri-monorepo";
+  # Commands to execute *only once* when the workspace is created.
+  idx.workspace.onCreate = {
+    "install-monorepo-dependencies" = "cd kateri-monorepo && yarn install";
   };
 
-  # Build backend functions on environment start
-  onStart = [
-    {
-      command = "yarn build";
-      workingDirectory = "./kateri-monorepo/packages/functions";
-    }
-  ];
+  # Commands to execute every time the workspace is opened or restarted.
+  idx.workspace.onStart = {
+    "build-cloud-functions" = "cd kateri-monorepo/packages/functions && yarn build";
+  };
 
-  # Previews for web and emulators
-  previews = [
-    {
-      id = "web";
-      label = "Web App";
-      command = "yarn start";
-      workingDirectory = "./kateri-monorepo/packages/web";
-      port = 3000; # adjust if your React dev server uses a different port
-    }
-    {
-      id = "emulators";
-      label = "Firebase Emulators";
-      command = "firebase emulators:start";
-      workingDirectory = "./kateri-monorepo";
-      env = {
-        NODE_OPTIONS = "--dns-result-order=ipv4first";
+  # Configure live previews for your applications and services.
+  idx.previews = {
+    enable = true;
+
+    previews = {
+      # 1. Web Application Preview (Your React Frontend)
+      web = {
+        command = [ "yarn" "start" ];
+        cwd = "kateri-monorepo/packages/web";
+        manager = "web";
       };
-      port = 4000; # default Emulator UI port
-    }
-  ];
+
+      # 2. Firebase Emulators Preview
+      emulators = {
+        command = [
+          "firebase"
+          "emulators:start"
+          "--project=kateri-fbc"
+          "--import=./emulator-data"
+          "--export-on-exit"
+        ];
+        cwd = "kateri-monorepo";
+        env = {
+          NODE_OPTIONS = "--dns-result-order=ipv4first";
+        };
+        manager = "web";
+      };
+    };
+  };
 }

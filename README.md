@@ -21,28 +21,28 @@ A multi-tenant web application for camp management, built with Firebase, Google 
 ## Repository Structure
 
 ```plaintext
-kateri-monorepo/
-  packages/
-    web/         # React frontend
-    functions/   # Cloud Functions backend
-    shared/      # Shared types/interfaces
-  firestore.rules
-  firebase.json
-  package.json   # Yarn workspaces
-.idx/
-  dev.nix        # IDX configuration
+/
+|-- kateri-monorepo/
+|   |-- packages/
+|   |   |-- web/        # React + Vite frontend
+|   |   |-- functions/  # Firebase Cloud Functions (TypeScript)
+|   |   |-- shared/     # Shared types/interfaces/models
+|   |-- firestore.rules # Firestore security rules
+|   |-- firebase.json   # Firebase project config
+|   |-- package.json    # Yarn workspaces config
+|-- .idx/
+|   |-- dev.nix         # IDX/Cloud IDE setup
+|-- README.md           # Project documentation
+|-- .gitignore
 ```
 
-## Local Development
+## Local Development in Firebase Studio (IDX)
 
-1. **Install dependencies**:  
-   `cd kateri-monorepo && yarn install`
-2. **Start emulators**:  
-   `firebase emulators:start`
-3. **Run frontend**:  
-   `cd packages/web && yarn start`
-4. **Build & start functions**:  
-   `cd packages/functions && yarn build && yarn start`
+1.  **Rebuild the Environment (if prompted):** The `.idx/dev.nix` file will automatically install all necessary tools (`yarn`, `firebase-tools`, `Java`, etc.).
+2.  **View Previews:** Open the **Previews** panel in the IDX sidebar.
+3.  **Start Emulators:** Click the "play" button next to the `emulators` preview. This will start the Firebase Emulator Suite.
+4.  **Start Frontend:** Click the "play" button next to the `web` preview. This will start the React development server.
+5.  **View Your App:** Open the URL provided by the `web` preview.
 
 ## Firestore Data Models
 
@@ -52,11 +52,3 @@ See [`docs/firestore-models.md`](docs/firestore-models.md) for entity definition
 
 - Configure `firebase.json` and `.env` as needed.
 - Deploy with `firebase deploy`.
-
-## Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-## License
-
-MIT (or your license here)

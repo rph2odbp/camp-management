@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read/write their own user doc
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
+    }
+
+    // Campers: parents can read their campers, admin can read/write all
+    match /campers/{camperId} {
+      allow read: if request.auth.uid in resource.data.parentIds || isAdmin();
+      allow update, delete: if isAdmin();
+      allow create: if request.auth.uid != null;
+    }
+
+    // Registrations: parents can read/update their own, admin can do all
+    match /registrations/{registrationId} {
+      allow read, update: if request.auth.uid == resource.data.parentId;
+      allow create: if request.auth.uid == request.resource.data.parentId;
+      allow delete: if isAdmin();
+      allow update: if isAdmin();
+    }
+
+    // Sessions: all can read, only admin can write
+    match /sessions/{sessionId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Payments: parent can read their own, admin can do all
+    match /payments/{paymentId} {
+      allow read: if request.auth.uid == resource.data.parentId || isAdmin();
+      allow create: if request.auth.uid == request.resource.data.parentId;
+      allow update, delete: if isAdmin();
+    }
+
+    // Messages: parent can create/read their own, admin can read/print
+    match /messages/{messageId} {
+      allow create: if request.auth.uid == request.resource.data.parentId;
+      allow read: if isAdmin() || request.auth.uid == resource.data.parentId;
+      allow update, delete: if isAdmin();
+    }
+
+    // Documents: parent can create/read their own, admin can do all
+    match /documents/{docId} {
+      allow create, read: if request.auth.uid == resource.data.uploadedBy || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // Staff Applications: staff can create/read their own, admin can do all
+    match /staff_applications/{applicationId} {
+      allow read, update: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update, delete: if isAdmin();
+    }
+
+    // Staff Profiles: staff can read/update their own, admin can do all
+    match /staff_profiles/{staffId} {
+      allow read, update: if request.auth.uid == staffId;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Galleries: parent/staff/admin can read if visibleTo includes their role
+    match /galleries/{galleryId} {
+      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in resource.data.visibleTo;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Notifications: user can read their own, admin can do all
+    match /notifications/{notificationId} {
+      allow read: if request.auth.uid == resource.data.userId || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Cabin Requests: parent can create/read for own registration, admin can do all
+    match /cabin_requests/{requestId} {
+      allow read, create: if request.auth.uid == get(/databases/$(database)/documents/registrations/$(resource.data.registrationId)).data.parentId;
+      allow update, delete: if isAdmin();
+    }
+
+    // Cabin Assignments: admin only
+    match /cabin_assignments/{assignmentId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // Admin Reports/Notes: admin only
+    match /admin_reports/{reportId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+    match /admin_notes/{noteId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // Helper function for admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}

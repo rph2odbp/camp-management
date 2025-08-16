@@ -1,6 +1,8 @@
 {
   "name": "@kateri/shared",
   "version": "1.0.0",
+  "private": true,
+  "description": "Shared types and interfaces for the Kateri Camper Management Platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
