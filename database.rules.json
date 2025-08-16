@@ -1,7 +1,76 @@
 {
-  /* Visit https://firebase.google.com/docs/database/security to learn more about security rules. */
   "rules": {
     ".read": false,
-    ".write": false
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "camps": {
+      "$campId": {
+        ".read": "auth != null && (root.child('roles/' + auth.uid + '/admin').val() == true || root.child('staffByCamp/' + $campId + '/' + auth.uid).val() == true)",
+        ".write": "auth != null && root.child('roles/' + auth.uid + '/admin').val() == true",
+        ".indexOn": ["name", "startDate", "endDate"]
+      }
+    },
+
+    "sessions": {
+      "$sessionId": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('roles/' + auth.uid + '/admin').val() == true",
+        ".indexOn": ["campId", "start", "end"]
+      }
+    },
+
+    "registrations": {
+      "$campId": {
+        "$regId": {
+          ".read": "auth != null && (root.child('registrationsByUser/' + auth.uid + '/' + $regId).val() == true || root.child('roles/' + auth.uid + '/admin').val() == true || root.child('staffByCamp/' + $campId + '/' + auth.uid).val() == true)",
+          ".write": "auth != null && (newData.child('userId').val() === auth.uid || root.child('roles/' + auth.uid + '/admin').val() == true)",
+          ".indexOn": ["userId", "status", "createdAt"]
+        }
+      }
+    },
+
+    "registrationsByUser": {
+      "$uid": {
+        "$regId": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && (auth.uid === $uid || root.child('roles/' + auth.uid + '/admin').val() == true)"
+        }
+      }
+    },
+
+    "staffByCamp": {
+      "$campId": {
+        "$uid": {
+          ".read": "auth != null && (auth.uid === $uid || root.child('roles/' + auth.uid + '/admin').val() == true)",
+          ".write": "auth != null && root.child('roles/' + auth.uid + '/admin').val() == true"
+        }
+      }
+    },
+
+    "roles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && root.child('roles/' + auth.uid + '/admin').val() == true"
+      }
+    },
+
+    "attendance": {
+      "$campId": {
+        "$sessionId": {
+          "$entryId": {
+            ".read": "auth != null && (root.child('roles/' + auth.uid + '/admin').val() == true || root.child('staffByCamp/' + $campId + '/' + auth.uid).val() == true)",
+            ".write": "auth != null && (root.child('roles/' + auth.uid + '/admin').val() == true || root.child('staffByCamp/' + $campId + '/' + auth.uid).val() == true)",
+            ".indexOn": ["userId", "timestamp"]
+          }
+        }
+      }
+    }
   }
 }
