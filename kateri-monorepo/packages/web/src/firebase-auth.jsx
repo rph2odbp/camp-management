@@ -17,11 +17,7 @@ export function AuthProvider({ children }) {
     return () => clearTimeout(timer);
   }, []);
 
-  return (
-    <AuthContext.Provider value={user}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={user}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

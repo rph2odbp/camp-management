@@ -50,7 +50,7 @@ function PaymentPage() {
           paymentData={{
             amount: { value: selectedPlan.amount, currency: 'USD' },
             reference: session.reference,
-            returnUrl: window.location.origin + '/parent/payment-result'
+            returnUrl: window.location.origin + '/parent/payment-result',
           }}
           onPaymentResult={handleDropInPaymentResult}
         />

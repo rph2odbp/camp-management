@@ -1,4 +1,4 @@
-export type MessageStatus = "queued" | "delivered" | "printed";
+export type MessageStatus = 'queued' | 'delivered' | 'printed';
 
 export interface Message {
   id: string;

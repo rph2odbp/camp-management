@@ -20,8 +20,6 @@ export function PaymentProvider({ children, user }) {
   }, [user]);
 
   return (
-    <PaymentContext.Provider value={{ outstanding, session }}>
-      {children}
-    </PaymentContext.Provider>
+    <PaymentContext.Provider value={{ outstanding, session }}>{children}</PaymentContext.Provider>
   );
 }

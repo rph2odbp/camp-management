@@ -1,4 +1,4 @@
-export type CabinRequestStatus = "pending" | "approved" | "rejected";
+export type CabinRequestStatus = 'pending' | 'approved' | 'rejected';
 
 export interface CabinRequest {
   id: string;

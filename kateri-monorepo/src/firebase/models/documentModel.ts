@@ -1,4 +1,4 @@
-export type DocumentStatus = "received" | "pending" | "approved" | "rejected";
+export type DocumentStatus = 'received' | 'pending' | 'approved' | 'rejected';
 
 export interface Document {
   id: string;

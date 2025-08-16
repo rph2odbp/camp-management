@@ -1,4 +1,4 @@
-export type CabinAssignmentAlgorithm = "AI" | "manual";
+export type CabinAssignmentAlgorithm = 'AI' | 'manual';
 
 export interface CabinAssignment {
   id: string;
