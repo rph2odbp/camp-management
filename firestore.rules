@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    function getUserDoc(userId) {
+      return get(/databases/$(database)/documents/users/$(userId));
+    }
+    function isRole(role) {
+      let userDoc = getUserDoc(request.auth.uid);
+      return request.auth != null &&
+             userDoc != null &&
+             'role' in userDoc.data &&
+             userDoc.data.role == role;
+    }
+    function isOneOfRoles(roles) {
+      let userDoc = getUserDoc(request.auth.uid); // CORRECTED TYPO
+      return request.auth != null &&
+             userDoc != null &&
+             'role' in userDoc.data &&
+             userDoc.data.role in roles;
+    }
+    function isAuthOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow read: if isAuthOwner(userId) || isRole('admin');
+      allow list, create, update, delete: if isRole('admin');
+    }
+
+    // --- Campers Collection ---
+    match /campers/{camperId} {
+      allow get: if isOneOfRoles(['admin', 'staff']) || (isRole('parent') && resource.data.parentId == request.auth.uid);
+      allow list: if isOneOfRoles(['admin', 'staff']) || (isRole('parent') && request.query.where.get('parentId', '') == request.auth.uid);
+      allow create: if isOneOfRoles(['parent', 'admin']);
+      allow update: if isRole('admin') || (isRole('parent') && resource.data.parentId == request.auth.uid);
+      allow delete: if isRole('admin');
+    }
+
+    // --- Sessions Collection ---
+    match /sessions/{sessionId} {
+      allow get, list: if true; // Publicly readable
+      allow write: if isRole('admin');
+    }
+    
+    // --- Cabins Collection ---
+    match /cabins/{cabinId} {
+        allow read, list: if isOneOfRoles(['admin', 'staff']);
+        allow write: if isRole('admin');
+    }
+
+    // --- Messages Collection ---
+    match /messages/{messageId} {
+      // The sender can create a message.
+      allow create: if request.auth.uid == request.resource.data.senderId;
+      // The sender, the parent of the camper receiving it, or an admin/staff can read/delete it.
+      allow read, delete: if request.auth.uid == resource.data.senderId || 
+                           isOneOfRoles(['admin', 'staff']) ||
+                           (isRole('parent') && exists(/databases/$(database)/documents/campers/$(resource.data.camperId)) &&
+                            get(/databases/$(database)/documents/campers/$(resource.data.camperId)).data.parentId == request.auth.uid);
+    }
+  }
+}

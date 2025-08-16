@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { functions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
-import AdyenCheckout from '@adyen/adyen-web';
+import { AdyenCheckout } from '@adyen/adyen-web';
 
 function AdyenDropIn({ paymentData, onPaymentResult }) {
   const dropinRef = useRef(null);
